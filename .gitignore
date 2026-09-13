@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 functions/lib
+.firebase/
 
 # Editor directories and files
 .vscode/*

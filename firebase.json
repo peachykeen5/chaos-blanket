@@ -21,6 +21,7 @@
   ],
   "hosting": {
     "public": "dist",
+    "predeploy": ["npm run build"],
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -47,7 +48,8 @@
       "port": 5050
     },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 4000
     },
     "singleProjectMode": true
   }
