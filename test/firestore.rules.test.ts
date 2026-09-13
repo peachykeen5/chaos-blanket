@@ -4,19 +4,31 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
 let testEnv: RulesTestEnvironment;
 
+const [emulatorHost, emulatorPort] = (
+  process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080"
+).split(":");
+
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: "chaos-blanket-rules-test",
     firestore: {
-      rules: readFileSync("firestore.rules", "utf8"),
-      host: "127.0.0.1",
-      port: 8080,
+      rules: readFileSync(new URL("../firestore.rules", import.meta.url), "utf8"),
+      host: emulatorHost,
+      port: Number(emulatorPort),
     },
   });
 });
@@ -71,11 +83,55 @@ describe("users/{uid}/** isolation", () => {
     );
   });
 
+  it("blocks a signed-in user from deleting another user's project doc", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "users/bob/projects/p1"), {
+        name: "Bob's blanket",
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(deleteDoc(doc(aliceDb, "users/bob/projects/p1")));
+  });
+
+  it("blocks a signed-in user from listing another user's projects collection", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "users/bob/projects/p1"), {
+        name: "Bob's blanket",
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(getDocs(collection(aliceDb, "users/bob/projects")));
+  });
+
   it("blocks an unauthenticated client from reading or writing any users/** doc", async () => {
     const anonDb = testEnv.unauthenticatedContext().firestore();
     await assertFails(getDoc(doc(anonDb, "users/alice/projects/p1")));
     await assertFails(
       setDoc(doc(anonDb, "users/alice/projects/p1"), { name: "hijacked" })
+    );
+  });
+
+  it("blocks a signed-in owner from writing to their own users/{uid}/meta/** doc", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(aliceDb, "users/alice/meta/rateLimit"), { count: 0 })
+    );
+  });
+
+  it("still lets a signed-in owner write to a normal subpath like projects", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(aliceDb, "users/alice/projects/p2"), { name: "Blanket 2" })
+    );
+  });
+});
+
+describe("default-deny for unmatched paths", () => {
+  it("blocks a signed-in user from reading or writing an unmatched top-level path", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(getDoc(doc(aliceDb, "hackers/whatever")));
+    await assertFails(
+      setDoc(doc(aliceDb, "hackers/whatever"), { pwned: true })
     );
   });
 });
@@ -111,6 +167,34 @@ describe("globalStitches / globalColours", () => {
         label: "Moss Stitch",
         contributorCount: 1,
       })
+    );
+  });
+
+  it("blocks a signed-in user from updating an existing global stitch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "globalStitches/single-crochet"), {
+        label: "Single Crochet",
+        contributorCount: 1,
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(aliceDb, "globalStitches/single-crochet"), {
+        contributorCount: 2,
+      })
+    );
+  });
+
+  it("blocks a signed-in user from deleting an existing global stitch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "globalStitches/treble-crochet"), {
+        label: "Treble Crochet",
+        contributorCount: 1,
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      deleteDoc(doc(aliceDb, "globalStitches/treble-crochet"))
     );
   });
 });

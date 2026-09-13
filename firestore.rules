@@ -1,11 +1,18 @@
 rules_version = '2';
+// Invariants for future plans editing this file:
+// 1. No top-level `match /{document=**}` — Firestore's implicit default-deny
+//    on any unmatched path is intentional and covered by tests. Do not add a
+//    catch-all allow (or a catch-all deny stub) at the top level.
+// 2. `users/{uid}/meta/**` is Admin-SDK-only. No client — the owner included —
+//    may read or write anything under it, in this plan or any future one
+//    (it backs server-side bookkeeping like the Global Pool rate limiter).
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
 
       match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if request.auth != null && request.auth.uid == uid && document[0] != 'meta';
       }
     }
 
