@@ -465,7 +465,7 @@ Expected: PASS (6 tests)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add functions/src/contributeToGlobal.ts functions/src/index.ts functions/test/contributeToGlobal.emulator.test.ts functions/package.json
+git add functions/src/contributeToGlobal.ts functions/src/index.ts functions/test/contributeToGlobal.emulator.test.ts functions/package.json functions/package-lock.json
 git commit -m "feat: add contributeToGlobal Cloud Function"
 ```
 

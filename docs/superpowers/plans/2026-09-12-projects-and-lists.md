@@ -710,7 +710,7 @@ Expected: PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add functions/src/cascadeDeleteProject.ts functions/src/index.ts functions/test/cascadeDeleteProject.emulator.test.ts functions/vitest.config.ts functions/vitest.emulator.config.ts functions/package.json package.json
+git add functions/src/cascadeDeleteProject.ts functions/src/index.ts functions/test/cascadeDeleteProject.emulator.test.ts functions/vitest.config.ts functions/vitest.emulator.config.ts functions/package.json functions/package-lock.json package.json
 git commit -m "feat: cascade-delete a project's stitches, colours, and history subcollections"
 ```
 

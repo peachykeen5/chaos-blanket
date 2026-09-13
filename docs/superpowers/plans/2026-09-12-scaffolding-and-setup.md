@@ -175,10 +175,12 @@ git commit -m "chore: scaffold Vite React TypeScript app"
 - Consumes: nothing
 - Produces: Tailwind utility classes usable in any `.tsx` file from here on
 
-- [ ] **Step 1: Install Tailwind**
+- [ ] **Step 1: Install Tailwind v3**
+
+This plan's config below (a `tailwind.config.ts` with `content`/`theme`/`plugins`, and `@tailwind` directives in CSS) is Tailwind v3 syntax. Pin to v3 explicitly — an unpinned install resolves to v4, which uses a different, CSS-first configuration model and will silently produce a build where none of the app's utility classes are generated.
 
 ```bash
-npm install -D tailwindcss postcss autoprefixer
+npm install -D tailwindcss@^3 postcss@^8 autoprefixer@^10
 npx tailwindcss init -p --ts
 ```
 
@@ -213,7 +215,7 @@ Run: `npm run dev`, open the app, confirm the `<h1>` from Task 1 renders bold an
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tailwind.config.ts postcss.config.js src/index.css
+git add package.json package-lock.json tailwind.config.ts postcss.config.js src/index.css
 git commit -m "chore: configure Tailwind CSS"
 ```
 
@@ -298,7 +300,7 @@ Expected: Auth, Firestore, and Functions emulators start without error; the Emul
 - [ ] **Step 6: Commit**
 
 ```bash
-git add firebase.json .firebaserc firestore.rules firestore.indexes.json functions/package.json functions/tsconfig.json functions/src/index.ts .env.example .gitignore
+git add firebase.json .firebaserc firestore.rules firestore.indexes.json functions/package.json functions/package-lock.json functions/tsconfig.json functions/src/index.ts .env.example .gitignore
 git commit -m "chore: initialize Firebase project (Firestore, Functions, Hosting, emulators)"
 ```
 
