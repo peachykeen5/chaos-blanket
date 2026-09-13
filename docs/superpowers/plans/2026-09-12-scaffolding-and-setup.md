@@ -6,7 +6,7 @@
 
 **Architecture:** Single-page app, no router library — the app is one screen (sign in → pick/create a project → work on it), so "which project is selected" is local component state, not a URL. Firebase JS SDK (modular v10+) connects to the Emulator Suite in dev (`import.meta.env.DEV`) and real Firebase services in production. Cloud Functions live in a separate `functions/` Node package (different runtime from the Vite app).
 
-**Tech Stack:** Vite, React 18, TypeScript, Tailwind CSS, Firebase JS SDK v10+, Firebase CLI, Firebase Emulator Suite, Vitest.
+**Tech Stack:** Vite, React 19, TypeScript, Tailwind CSS, Firebase JS SDK v10+, Firebase CLI, Firebase Emulator Suite, Vitest.
 
 **Spec:** [docs/superpowers/specs/2026-09-12-chaos-blanket-generator-design.md](../specs/2026-09-12-chaos-blanket-generator-design.md) — see also [CONTEXT.md](../../../CONTEXT.md) for domain vocabulary and [docs/adr/0001-global-pool-key-scheme.md](../../adr/0001-global-pool-key-scheme.md).
 
@@ -32,7 +32,9 @@ chaos-blanket/
 ├── package.json
 ├── vite.config.ts
 ├── tsconfig.json
+├── tsconfig.app.json
 ├── tsconfig.node.json
+├── .oxlintrc.json
 ├── tailwind.config.ts
 ├── postcss.config.js
 ├── vitest.config.ts
@@ -41,11 +43,19 @@ chaos-blanket/
 ├── firestore.rules
 ├── firestore.indexes.json
 ├── .env.example
+├── public/
+│   ├── favicon.svg
+│   └── icons.svg
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx
+│   ├── App.css
 │   ├── index.css
 │   ├── types.ts
+│   ├── assets/
+│   │   ├── hero.png
+│   │   ├── react.svg
+│   │   └── vite.svg
 │   └── lib/
 │       ├── firebase.ts
 │       └── paths.ts
@@ -55,6 +65,8 @@ chaos-blanket/
     └── src/
         └── index.ts
 ```
+
+`tsconfig.app.json`, `.oxlintrc.json`, `public/` (with `favicon.svg`/`icons.svg`), and `src/App.css`/`src/assets/` are default output of the `npm create vite@latest -- --template react-ts` scaffold that this plan didn't originally anticipate.
 
 - `src/types.ts` — every Firestore document shape used across the app (no behavior, just interfaces).
 - `src/lib/firebase.ts` — the one place `initializeApp`/`getAuth`/`getFirestore`/`getFunctions` are called; connects to emulators in dev.
@@ -253,10 +265,10 @@ When prompted:
 - Configure as single-page app: yes.
 - Set up automatic builds/deploys with GitHub: no (Global Constraint: manual deploys only).
 - Emulators: Authentication, Firestore, Functions, Hosting.
-- Emulator ports: accept defaults.
+- Emulator ports: accept defaults, except Hosting — use `5050`, not the default `5000` (conflicts with macOS AirPlay/ControlCenter, which claims port `5000`).
 - Download emulator UI: yes.
 
-- [ ] **Step 2: Write a starter `firestore.rules`**
+- [ ] **Step 3: Write a starter `firestore.rules`**
 
 `firestore.rules` (deny-all default; Plan 2 — Security Rules fills this in properly):
 
@@ -271,14 +283,14 @@ service cloud.firestore {
 }
 ```
 
-- [ ] **Step 3: Replace the generated `functions/src/index.ts` stub**
+- [ ] **Step 4: Replace the generated `functions/src/index.ts` stub**
 
 ```ts
 // Cloud Functions are added in later plans (contributeToGlobal, cascadeDeleteProject).
 export {};
 ```
 
-- [ ] **Step 4: Document required environment variables**
+- [ ] **Step 5: Document required environment variables**
 
 `.env.example`:
 
@@ -294,12 +306,12 @@ VITE_FIREBASE_APP_CHECK_SITE_KEY=
 
 Copy it to `.env.local` (already git-ignored by the Vite scaffold) and fill in the real values from the Firebase console's project settings (App Check site key comes from registering a reCAPTCHA v3 site in the App Check section — used in Task 4).
 
-- [ ] **Step 5: Verify the emulator suite starts**
+- [ ] **Step 6: Verify the emulator suite starts**
 
 Run: `firebase emulators:start`
 Expected: Auth, Firestore, and Functions emulators start without error; the Emulator UI is reachable at the printed localhost URL. Stop with Ctrl+C.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add firebase.json .firebaserc firestore.rules firestore.indexes.json functions/package.json functions/package-lock.json functions/tsconfig.json functions/src/index.ts .env.example .gitignore
@@ -392,7 +404,7 @@ git commit -m "feat: add shared Firestore document types"
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: `userDocPath`, `stitchLibraryCollectionPath`, `colourLibraryCollectionPath`, `projectsCollectionPath`, `projectDocPath`, `projectStitchesCollectionPath`, `projectColoursCollectionPath`, `projectHistoryCollectionPath`, `globalStitchesCollectionPath`, `globalColoursCollectionPath`, `rateLimitDocPath` — all `(...) => string`, imported everywhere a Firestore path is needed so no path string is ever hand-typed twice
+- Produces: `userDocPath`, `stitchLibraryCollectionPath`, `colourLibraryCollectionPath`, `projectsCollectionPath`, `projectDocPath`, `projectStitchesCollectionPath`, `projectColoursCollectionPath`, `projectHistoryCollectionPath`, `globalStitchesCollectionPath`, `globalColoursCollectionPath` — all `(...) => string`, imported everywhere a Firestore path is needed so no path string is ever hand-typed twice
 
 - [ ] **Step 1: Write the failing test**
 
@@ -409,7 +421,6 @@ import {
   projectHistoryCollectionPath,
   projectStitchesCollectionPath,
   projectsCollectionPath,
-  rateLimitDocPath,
   stitchLibraryCollectionPath,
   userDocPath,
 } from "./paths";
@@ -432,7 +443,6 @@ describe("paths", () => {
     );
     expect(globalStitchesCollectionPath()).toBe("globalStitches");
     expect(globalColoursCollectionPath()).toBe("globalColours");
-    expect(rateLimitDocPath("u1")).toBe("users/u1/meta/rateLimit");
   });
 });
 ```
@@ -470,8 +480,6 @@ export const projectHistoryCollectionPath = (uid: string, projectId: string) =>
 export const globalStitchesCollectionPath = () => "globalStitches";
 
 export const globalColoursCollectionPath = () => "globalColours";
-
-export const rateLimitDocPath = (uid: string) => `users/${uid}/meta/rateLimit`;
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
