@@ -79,3 +79,38 @@ describe("users/{uid}/** isolation", () => {
     );
   });
 });
+
+describe("globalStitches / globalColours", () => {
+  it("lets any signed-in user read a global stitch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "globalStitches/double-crochet"), {
+        label: "Double Crochet",
+        contributorCount: 1,
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(getDoc(doc(aliceDb, "globalStitches/double-crochet")));
+  });
+
+  it("blocks an unauthenticated client from reading global collections", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "globalColours/ff0000"), {
+        label: "Red",
+        hex: "#ff0000",
+        contributorCount: 1,
+      });
+    });
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anonDb, "globalColours/ff0000")));
+  });
+
+  it("blocks a signed-in user from writing directly to a global collection", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(aliceDb, "globalStitches/moss-stitch"), {
+        label: "Moss Stitch",
+        contributorCount: 1,
+      })
+    );
+  });
+});
