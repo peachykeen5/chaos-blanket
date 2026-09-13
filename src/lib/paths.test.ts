@@ -8,7 +8,6 @@ import {
   projectHistoryCollectionPath,
   projectStitchesCollectionPath,
   projectsCollectionPath,
-  rateLimitDocPath,
   stitchLibraryCollectionPath,
   userDocPath,
 } from "./paths";
@@ -31,6 +30,5 @@ describe("paths", () => {
     );
     expect(globalStitchesCollectionPath()).toBe("globalStitches");
     expect(globalColoursCollectionPath()).toBe("globalColours");
-    expect(rateLimitDocPath("u1")).toBe("users/u1/meta/rateLimit");
   });
 });

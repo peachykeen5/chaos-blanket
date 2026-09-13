@@ -23,5 +23,3 @@ export const projectHistoryCollectionPath = (uid: string, projectId: string) =>
 export const globalStitchesCollectionPath = () => "globalStitches";
 
 export const globalColoursCollectionPath = () => "globalColours";
-
-export const rateLimitDocPath = (uid: string) => `users/${uid}/meta/rateLimit`;
