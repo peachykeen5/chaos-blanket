@@ -87,6 +87,13 @@ npm create vite@latest . -- --template react-ts
 
 When prompted about the current directory not being empty (it has `docs/`, `README.md`, `CONTEXT.md`), confirm to proceed in the current directory.
 
+The scaffold also creates `public/icons.svg` and `src/App.css`/`src/assets/` (react.svg, vite.svg, hero.png), none of which anything in this app ends up referencing once Step 6 replaces the default `App.tsx`. Delete them now:
+
+```bash
+rm -f public/icons.svg
+rm -rf src/App.css src/assets
+```
+
 - [ ] **Step 2: Install dependencies**
 
 ```bash
