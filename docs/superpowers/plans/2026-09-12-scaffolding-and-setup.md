@@ -96,8 +96,10 @@ Edit `package.json`, add to `"scripts"`:
 
 - [ ] **Step 4: Add Vitest**
 
+Pinned to v2 — a later major requires a newer Node engine range than this project targets; an unpinned install can silently resolve to an incompatible version.
+
 ```bash
-npm install -D vitest
+npm install -D vitest@^2
 ```
 
 Add to `package.json` `"scripts"`:
