@@ -29,6 +29,7 @@
 chaos-blanket/
 ├── firestore.rules          (modified: replaces the deny-all stub)
 ├── package.json              (modified: adds test:rules script + devDependency)
+├── vitest.rules.config.ts
 └── test/
     └── firestore.rules.test.ts
 ```
@@ -65,6 +66,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["**/*.rules.test.ts"],
+    // All rules test files share one emulator instance and each calls
+    // clearFirestore() in beforeEach; running files in parallel would race
+    // that shared state once a second *.rules.test.ts file exists.
+    fileParallelism: false,
   },
 });
 ```
@@ -88,19 +93,35 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
 let testEnv: RulesTestEnvironment;
 
+// firebase emulators:exec sets FIRESTORE_EMULATOR_HOST ("host:port") for the
+// script it runs, keeping this in sync with firebase.json automatically.
+const [emulatorHost, emulatorPort] = (
+  process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080"
+).split(":");
+
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: "chaos-blanket-rules-test",
     firestore: {
-      rules: readFileSync("firestore.rules", "utf8"),
-      host: "127.0.0.1",
-      port: 8080,
+      // Resolved via a file URL so tests load firestore.rules correctly
+      // regardless of the process's working directory.
+      rules: readFileSync(new URL("../firestore.rules", import.meta.url), "utf8"),
+      host: emulatorHost,
+      port: Number(emulatorPort),
     },
   });
 });
@@ -155,11 +176,62 @@ describe("users/{uid}/** isolation", () => {
     );
   });
 
+  it("blocks a signed-in user from deleting another user's project doc", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "users/bob/projects/p1"), {
+        name: "Bob's blanket",
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(deleteDoc(doc(aliceDb, "users/bob/projects/p1")));
+  });
+
+  it("blocks a signed-in user from listing another user's projects collection", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "users/bob/projects/p1"), {
+        name: "Bob's blanket",
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(getDocs(collection(aliceDb, "users/bob/projects")));
+  });
+
   it("blocks an unauthenticated client from reading or writing any users/** doc", async () => {
     const anonDb = testEnv.unauthenticatedContext().firestore();
     await assertFails(getDoc(doc(anonDb, "users/alice/projects/p1")));
     await assertFails(
       setDoc(doc(anonDb, "users/alice/projects/p1"), { name: "hijacked" })
+    );
+  });
+
+  it("blocks a signed-in owner from writing to their own users/{uid}/meta/** doc", async () => {
+    // users/{uid}/meta/** is reserved for server-side bookkeeping (e.g. the
+    // Global Pool plan's contributeToGlobal rate limiter) — no client,
+    // owner included, may touch it directly.
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(aliceDb, "users/alice/meta/rateLimit"), { count: 0 })
+    );
+  });
+
+  it("still lets a signed-in owner write to a normal subpath like projects", async () => {
+    // Regression guard: proves the meta exclusion above doesn't over-scope
+    // and break every other subpath under the recursive rule.
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(aliceDb, "users/alice/projects/p2"), { name: "Blanket 2" })
+    );
+  });
+});
+
+describe("default-deny for unmatched paths", () => {
+  it("blocks a signed-in user from reading or writing an unmatched top-level path", async () => {
+    // Pins the invariant that this file has no top-level catch-all: an
+    // unmatched path relies on Firestore's implicit default-deny.
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(getDoc(doc(aliceDb, "hackers/whatever")));
+    await assertFails(
+      setDoc(doc(aliceDb, "hackers/whatever"), { pwned: true })
     );
   });
 });
@@ -176,23 +248,32 @@ Expected: FAIL — the deny-all stub from the scaffolding plan (`allow read, wri
 
 ```
 rules_version = '2';
+// Invariants for future plans editing this file:
+// 1. No top-level `match /{document=**}` — Firestore's implicit default-deny
+//    on any unmatched path is intentional and covered by tests. Do not add a
+//    catch-all allow (or a catch-all deny stub) at the top level.
+// 2. `users/{uid}/meta/**` is Admin-SDK-only. No client — the owner included —
+//    may read or write anything under it, in this plan or any future one
+//    (it backs server-side bookkeeping like the Global Pool rate limiter).
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
 
       match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if request.auth != null && request.auth.uid == uid && document[0] != 'meta';
       }
     }
   }
 }
 ```
 
+(Why the `document[0] != 'meta'` guard: `users/{uid}/meta/**` is reserved for server-side bookkeeping — e.g. the Global Pool plan's `contributeToGlobal` Cloud Function uses `users/{uid}/meta/rateLimit` via the Admin SDK to enforce a per-user daily contribution limit. Without this guard, the recursive owner-write rule would let a client delete or edit that doc directly and bypass the rate limit. `document` in a `{document=**}` recursive wildcard binds to a `List<String>` of the path segments matched beneath `users/{uid}`, so `document[0]` is the first of those segments — `"meta"` for `users/alice/meta/rateLimit`, `"projects"` for `users/alice/projects/p1`.)
+
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `npm run test:rules`
-Expected: PASS (all 5 tests)
+Expected: PASS (all 10 tests)
 
 - [ ] **Step 7: Commit**
 
@@ -250,13 +331,41 @@ describe("globalStitches / globalColours", () => {
       })
     );
   });
+
+  it("blocks a signed-in user from updating an existing global stitch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "globalStitches/single-crochet"), {
+        label: "Single Crochet",
+        contributorCount: 1,
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(aliceDb, "globalStitches/single-crochet"), {
+        contributorCount: 2,
+      })
+    );
+  });
+
+  it("blocks a signed-in user from deleting an existing global stitch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "globalStitches/treble-crochet"), {
+        label: "Treble Crochet",
+        contributorCount: 1,
+      });
+    });
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      deleteDoc(doc(aliceDb, "globalStitches/treble-crochet"))
+    );
+  });
 });
 ```
 
 - [ ] **Step 2: Run the tests to verify the new ones fail**
 
 Run: `npm run test:rules`
-Expected: the 3 new tests FAIL — `firestore.rules` has no `globalStitches`/`globalColours` match yet, so Firestore's implicit default (deny) rejects even the authenticated read.
+Expected: the 5 new tests FAIL — `firestore.rules` has no `globalStitches`/`globalColours` match yet, so Firestore's implicit default (deny) rejects even the authenticated read.
 
 - [ ] **Step 3: Implement the global-collection rules**
 
@@ -277,7 +386,7 @@ Expected: the 3 new tests FAIL — `firestore.rules` has no `globalStitches`/`gl
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm run test:rules`
-Expected: PASS (all 8 tests)
+Expected: PASS (all 15 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -293,3 +402,4 @@ git commit -m "feat: make globalStitches/globalColours read-only for signed-in u
 - **Spec coverage:** covers both bullets under "Firestore Security Rules" in the spec's Security & Abuse Prevention section. The `contributeToGlobal` function's own validation/rate-limit/denylist logic is covered by the Global Pool plan, not here — this plan only covers the rules the *client* is bound by.
 - **Placeholder scan:** none — every rule and test is complete and runnable.
 - **Type consistency:** N/A (no TypeScript interfaces produced by this plan); collection paths used in tests match `src/lib/paths.ts` from the scaffolding plan.
+- **Final-review fix pass (2026-09-13):** a whole-branch review found that the original recursive `users/{uid}/{document=**}` rule (with no `meta` exclusion) let a client delete or overwrite `users/{uid}/meta/rateLimit` from the SDK, bypassing the `contributeToGlobal` rate limiter described above — since fixed with the `document[0] != 'meta'` guard. The same pass also added: a test pinning Firestore's implicit default-deny for unmatched top-level paths (no rule change needed — this plan never added a catch-all), delete/list verb coverage for cross-user isolation, update/delete verb coverage for the global collections, a location-independent `readFileSync` for `firestore.rules`, `FIRESTORE_EMULATOR_HOST`-driven host/port instead of hardcoding, and `fileParallelism: false` in `vitest.rules.config.ts` to avoid a future multi-file emulator race. This doc's steps above reflect the fixed version.
