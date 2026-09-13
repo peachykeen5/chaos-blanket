@@ -43,19 +43,14 @@ chaos-blanket/
 ├── firestore.rules
 ├── firestore.indexes.json
 ├── .env.example
+├── .env.development
 ├── public/
-│   ├── favicon.svg
-│   └── icons.svg
+│   └── favicon.svg
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx
-│   ├── App.css
 │   ├── index.css
 │   ├── types.ts
-│   ├── assets/
-│   │   ├── hero.png
-│   │   ├── react.svg
-│   │   └── vite.svg
 │   └── lib/
 │       ├── firebase.ts
 │       └── paths.ts
@@ -66,7 +61,7 @@ chaos-blanket/
         └── index.ts
 ```
 
-`tsconfig.app.json`, `.oxlintrc.json`, `public/` (with `favicon.svg`/`icons.svg`), and `src/App.css`/`src/assets/` are default output of the `npm create vite@latest -- --template react-ts` scaffold that this plan didn't originally anticipate.
+`tsconfig.app.json` and `.oxlintrc.json` are default output of the `npm create vite@latest -- --template react-ts` scaffold that this plan didn't originally anticipate (kept — harmless). The scaffold also produces `public/icons.svg` and `src/App.css`/`src/assets/`, none of which anything in this app references — delete them in Task 1 rather than carrying dead files forward (a later full-plan review caught these still sitting in the tree unreferenced). `.env.development` is added in Task 3, alongside `.env.example`, so a fresh checkout can run without hand-editing `.env.local` first.
 
 - `src/types.ts` — every Firestore document shape used across the app (no behavior, just interfaces).
 - `src/lib/firebase.ts` — the one place `initializeApp`/`getAuth`/`getFirestore`/`getFunctions` are called; connects to emulators in dev.
@@ -103,8 +98,10 @@ npm install
 Edit `package.json`, add to `"scripts"`:
 
 ```json
-"typecheck": "tsc --noEmit"
+"typecheck": "tsc -b"
 ```
+
+The Vite scaffold's root `tsconfig.json` is solution-style (references-only, `"files": []`) — plain `tsc --noEmit` silently checks zero files and always exits 0. Only `tsc -b` (build mode) follows project references and actually typechecks anything.
 
 - [ ] **Step 4: Add Vitest**
 
@@ -123,18 +120,18 @@ Add to `package.json` `"scripts"`:
 Create `vitest.config.ts` so the default `test` script only runs pure unit tests — tests that need the emulator running (Security Rules tests, and later the auth/user-bootstrap integration test) use their own `test:rules` / `test:emulator` scripts instead, following the naming convention `*.rules.test.ts` / `*.emulator.test.ts`:
 
 ```ts
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    exclude: [
-      "**/node_modules/**",
-      "**/*.rules.test.ts",
-      "**/*.emulator.test.ts",
-    ],
+    exclude: [...configDefaults.exclude, "**/*.rules.test.ts", "**/*.emulator.test.ts"],
   },
 });
 ```
+
+Extends Vitest's own default excludes (`**/node_modules/**`, `**/dist/**`, etc.) rather than replacing them — replacing them would let a built artifact under `dist/` get picked up as a test file.
+
+Also add `vitest.config.ts` to `tsconfig.node.json`'s `include` array alongside `vite.config.ts`, so it's covered by `npm run typecheck`.
 
 - [ ] **Step 5: Verify the app boots and typechecks**
 
@@ -238,11 +235,11 @@ git commit -m "chore: configure Tailwind CSS"
 ### Task 3: Initialize the Firebase project structure
 
 **Files:**
-- Create: `firebase.json`, `.firebaserc`, `firestore.rules`, `firestore.indexes.json`, `functions/package.json`, `functions/tsconfig.json`, `functions/src/index.ts`, `.env.example`
+- Create: `firebase.json`, `.firebaserc`, `firestore.rules`, `firestore.indexes.json`, `functions/package.json`, `functions/tsconfig.json`, `functions/src/index.ts`, `.env.example`, `.env.development`
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: `firebase emulators:start` running Auth, Firestore, and Functions emulators; a `functions/` package that later plans add real functions to; `.env.example` documenting the Vite env vars `src/lib/firebase.ts` (Task 4) will read
+- Produces: `firebase emulators:start` running Auth, Firestore, and Functions emulators; a `functions/` package that later plans add real functions to; `.env.example`/`.env.development` documenting (and, for `.env.development`, providing working dummy values for) the Vite env vars `src/lib/firebase.ts` (Task 6) will read
 
 - [ ] **Step 1: Create a Firebase project**
 
@@ -304,7 +301,21 @@ VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_APP_CHECK_SITE_KEY=
 ```
 
-Copy it to `.env.local` (already git-ignored by the Vite scaffold) and fill in the real values from the Firebase console's project settings (App Check site key comes from registering a reCAPTCHA v3 site in the App Check section — used in Task 4).
+Copy it to `.env.local` (already git-ignored by the Vite scaffold) and fill in the real values from the Firebase console's project settings (App Check site key comes from registering a reCAPTCHA v3 site in the App Check section — used in Task 6).
+
+Also create `.env.development` with the same keys but dummy, non-empty, emulator-safe values (this file is NOT git-ignored — Vite loads it automatically in dev mode, so a fresh checkout with no `.env.local` yet can still run against the emulators without crashing on an empty API key):
+
+```
+VITE_FIREBASE_API_KEY=demo-api-key
+VITE_FIREBASE_AUTH_DOMAIN=chaos-blanket.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=chaos-blanket
+VITE_FIREBASE_STORAGE_BUCKET=chaos-blanket.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=000000000000
+VITE_FIREBASE_APP_ID=1:000000000000:web:0000000000000000000000
+VITE_FIREBASE_APP_CHECK_SITE_KEY=demo-app-check-site-key
+```
+
+`VITE_FIREBASE_PROJECT_ID` must match `.firebaserc`'s project ID, since `firebase.json`'s `singleProjectMode: true` requires it.
 
 - [ ] **Step 6: Verify the emulator suite starts**
 
@@ -314,7 +325,7 @@ Expected: Auth, Firestore, and Functions emulators start without error; the Emul
 - [ ] **Step 7: Commit**
 
 ```bash
-git add firebase.json .firebaserc firestore.rules firestore.indexes.json functions/package.json functions/package-lock.json functions/tsconfig.json functions/src/index.ts .env.example .gitignore
+git add firebase.json .firebaserc firestore.rules firestore.indexes.json functions/package.json functions/package-lock.json functions/tsconfig.json functions/src/index.ts .env.example .env.development .gitignore
 git commit -m "chore: initialize Firebase project (Firestore, Functions, Hosting, emulators)"
 ```
 
