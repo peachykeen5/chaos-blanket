@@ -40,6 +40,7 @@ chaos-blanket/
 **Files:**
 - Modify: `firestore.rules`
 - Create: `test/firestore.rules.test.ts`
+- Create: `vitest.rules.config.ts`
 - Modify: `package.json`
 
 **Interfaces:**
@@ -52,13 +53,29 @@ chaos-blanket/
 npm install -D @firebase/rules-unit-testing
 ```
 
-- [ ] **Step 2: Add a `test:rules` script**
+- [ ] **Step 2: Add a `test:rules` script and dedicated config**
 
-`package.json`, in `"scripts"`:
+First, create a new Vitest config file that includes only `.rules.test.ts` files:
+
+`vitest.rules.config.ts`:
+
+```ts
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["**/*.rules.test.ts"],
+  },
+});
+```
+
+Then add the `test:rules` script to `package.json`, in `"scripts"`:
 
 ```json
-"test:rules": "firebase emulators:exec --only firestore \"vitest run test/firestore.rules.test.ts\""
+"test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\""
 ```
+
+(Why: The main `vitest.config.ts` excludes `.rules.test.ts` files so that `npm run test` doesn't fail trying to connect to the emulator. This dedicated config file ensures rules tests run only when explicitly requested with `npm run test:rules`, keeping `npm run test` independent of the emulator.)
 
 - [ ] **Step 3: Write the failing test**
 
