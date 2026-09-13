@@ -23,3 +23,6 @@ yarn-error.log*
 # Editor
 .vscode/
 .idea/
+
+# Claude Code worktrees
+.claude/
