@@ -3,6 +3,7 @@ import { ensureUserDoc } from "./auth/ensureUserDoc";
 import { SignIn } from "./auth/SignIn";
 import { useAuth } from "./auth/useAuth";
 import { GlobalPoolBrowser } from "./features/globalPool/GlobalPoolBrowser";
+import { LibraryPanel } from "./features/library/LibraryPanel";
 import { ProjectsPanel } from "./features/projects/ProjectsPanel";
 import {
   colourLibraryCollectionPath,
@@ -52,6 +53,7 @@ export function App() {
         </p>
       )}
       <ProjectsPanel uid={user.uid} />
+      <LibraryPanel uid={user.uid} />
       <div className="mt-6 border-t border-gray-200 pt-4">
         <h2 className="font-semibold text-gray-900">Browse global stitches</h2>
         <GlobalPoolBrowser
