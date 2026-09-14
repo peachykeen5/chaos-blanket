@@ -30,8 +30,13 @@ export function ItemListEditor({
 
   async function reload() {
     setLoading(true);
-    setItems(await fetchLabeledItems<Item>(collectionPath));
-    setLoading(false);
+    try {
+      setItems(await fetchLabeledItems<Item>(collectionPath));
+    } catch {
+      setWriteError("Couldn't load items — check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -108,8 +113,7 @@ export function ItemListEditor({
                   placeholder="#hex"
                   defaultValue={item.hex ?? ""}
                   onBlur={(e) => {
-                    if (e.target.value)
-                      void handleHexChange(item.id, e.target.value);
+                    void handleHexChange(item.id, e.target.value);
                   }}
                   className="w-20 rounded border border-gray-300 px-1 text-xs"
                 />
