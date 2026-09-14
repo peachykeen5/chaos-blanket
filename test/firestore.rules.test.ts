@@ -42,6 +42,20 @@ beforeEach(async () => {
 });
 
 describe("users/{uid}/** isolation", () => {
+  it("lets a signed-in user write their own top-level user doc", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(aliceDb, "users/alice"), { email: "alice@example.com" })
+    );
+  });
+
+  it("blocks a signed-in user from writing another user's top-level user doc", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(aliceDb, "users/bob"), { email: "hijack@example.com" })
+    );
+  });
+
   it("lets a signed-in user read and write their own project doc", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
     await assertSucceeds(
