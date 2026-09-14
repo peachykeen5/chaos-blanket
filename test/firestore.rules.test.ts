@@ -132,6 +132,11 @@ describe("users/{uid}/** isolation", () => {
     );
   });
 
+  it("blocks a list query on the owner's own meta collection", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(getDocs(collection(aliceDb, "users/alice/meta")));
+  });
+
   it("still lets a signed-in owner write to a normal subpath like projects", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
     await assertSucceeds(

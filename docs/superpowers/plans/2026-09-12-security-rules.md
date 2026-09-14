@@ -274,20 +274,20 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
 
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == uid && document[0] != 'meta';
+      match /{collectionName}/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == uid && collectionName != 'meta';
       }
     }
   }
 }
 ```
 
-(Why the `document[0] != 'meta'` guard: `users/{uid}/meta/**` is reserved for server-side bookkeeping — e.g. the Global Pool plan's `contributeToGlobal` Cloud Function uses `users/{uid}/meta/rateLimit` via the Admin SDK to enforce a per-user daily contribution limit. Without this guard, the recursive owner-write rule would let a client delete or edit that doc directly and bypass the rate limit. `document` in a `{document=**}` recursive wildcard binds to a `List<String>` of the path segments matched beneath `users/{uid}`, so `document[0]` is the first of those segments — `"meta"` for `users/alice/meta/rateLimit`, `"projects"` for `users/alice/projects/p1`.)
+(Why a single-segment wildcard instead of recursive: Firestore Security Rules cannot index into a recursive-wildcard `path` variable (like `document[0]` from `{document=**}`) during `list` (collection-query) operations — only during single-document `get` operations. This limitation would silently block legitimate list queries under `users/{uid}/**`. Using a single-segment wildcard (`{collectionName}/{document=**}`) instead allows the rule to check the first collection name directly (`collectionName != 'meta'`) for both single-document and list operations. This covers all current and future subcollections, not just the three initially used (`stitches`, `colours`, `history`).)
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `npm run test:rules`
-Expected: PASS (all 12 tests)
+Expected: PASS (all 12 tests in this task; 18 when the Projects & Lists plan adds its regression test)
 
 - [ ] **Step 7: Commit**
 
@@ -400,7 +400,7 @@ Expected: the 5 new tests FAIL — `firestore.rules` has no `globalStitches`/`gl
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm run test:rules`
-Expected: PASS (all 17 tests)
+Expected: PASS (all 17 tests in this task; 18 when the Projects & Lists plan adds its regression test)
 
 - [ ] **Step 5: Commit**
 
