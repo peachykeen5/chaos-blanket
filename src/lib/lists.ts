@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { dedupeAgainstExisting, parseBulkPaste } from "./bulkPaste";
+import { normalizeLabel } from "./normalize";
 
 export interface LabeledItem {
   id: string;
@@ -49,4 +50,21 @@ export async function updateColourHex(
   hex: string
 ): Promise<void> {
   await updateDoc(doc(db, collectionPath, itemId), { hex });
+}
+
+export async function addLabeledItemWithHex(
+  collectionPath: string,
+  item: { label: string; hex?: string },
+  existingLabels: string[]
+): Promise<void> {
+  const added = await bulkAddLabels(collectionPath, item.label, existingLabels);
+  if (added > 0 && item.hex) {
+    const refreshed = await fetchLabeledItems<LabeledItem & { hex?: string }>(
+      collectionPath
+    );
+    const created = refreshed.find(
+      (i) => normalizeLabel(i.label) === normalizeLabel(item.label)
+    );
+    if (created) await updateColourHex(collectionPath, created.id, item.hex);
+  }
 }

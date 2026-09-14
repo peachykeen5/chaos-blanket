@@ -2,6 +2,7 @@ import { signInAnonymously, signOut } from "firebase/auth";
 import { afterEach, describe, expect, it } from "vitest";
 import { auth } from "./firebase";
 import {
+  addLabeledItemWithHex,
   bulkAddLabels,
   deleteItem,
   fetchLabeledItems,
@@ -50,5 +51,29 @@ describe("lists", () => {
 
     await deleteItem(collectionPath, item.id);
     expect(await fetchLabeledItems<Item>(collectionPath)).toEqual([]);
+  });
+
+  it("addLabeledItemWithHex copies the hex along with the label, and skips a duplicate", async () => {
+    const { user } = await signInAnonymously(auth);
+    const collectionPath = `users/${user.uid}/projects/p1/colours`;
+
+    await addLabeledItemWithHex(
+      collectionPath,
+      { label: "Coral", hex: "#FF7F50" },
+      []
+    );
+    let items = await fetchLabeledItems<Item>(collectionPath);
+    expect(items).toEqual([
+      expect.objectContaining({ label: "Coral", hex: "#FF7F50" }),
+    ]);
+
+    await addLabeledItemWithHex(
+      collectionPath,
+      { label: "coral", hex: "#000000" },
+      items.map((i) => i.label)
+    );
+    items = await fetchLabeledItems<Item>(collectionPath);
+    expect(items).toHaveLength(1); // duplicate skipped, original hex untouched
+    expect(items[0].hex).toBe("#FF7F50");
   });
 });
