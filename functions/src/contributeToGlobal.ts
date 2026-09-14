@@ -15,6 +15,8 @@ interface ContributeInput {
 }
 
 export const contributeToGlobal = onCall<ContributeInput>(
+  // FUNCTIONS_EMULATOR is set only by the local Functions emulator process;
+  // never present in a real deployment.
   { enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" },
   async (request) => {
     if (!request.auth) {
@@ -66,20 +68,28 @@ async function enforceRateLimit(
   const today = new Date().toISOString().slice(0, 10); // UTC calendar day
   const ref = db.doc(`users/${uid}/meta/rateLimit`);
 
-  await db.runTransaction(async (tx) => {
-    const snapshot = await tx.get(ref);
-    const data = snapshot.data();
+  try {
+    await db.runTransaction(async (tx) => {
+      const snapshot = await tx.get(ref);
+      const data = snapshot.data();
 
-    if (!snapshot.exists || data?.date !== today) {
-      tx.set(ref, { date: today, count: 1 });
-      return;
-    }
-    if (data.count >= DAILY_LIMIT) {
-      throw new HttpsError(
-        "resource-exhausted",
-        "Daily contribution limit reached."
-      );
-    }
-    tx.update(ref, { count: FieldValue.increment(1) });
-  });
+      if (!snapshot.exists || data?.date !== today) {
+        tx.set(ref, { date: today, count: 1 });
+        return;
+      }
+      if (data.count >= DAILY_LIMIT) {
+        throw new HttpsError(
+          "resource-exhausted",
+          "Daily contribution limit reached."
+        );
+      }
+      tx.update(ref, { count: FieldValue.increment(1) });
+    });
+  } catch (err) {
+    if (err instanceof HttpsError) throw err;
+    throw new HttpsError(
+      "aborted",
+      "Too many contributions at once — please try again in a moment."
+    );
+  }
 }
