@@ -526,6 +526,7 @@ git commit -m "feat: add fire-and-forget contributeToGlobal client wrapper"
 
 ```ts
 import {
+  type QueryConstraint,
   type QueryDocumentSnapshot,
   collection,
   endAt,
@@ -557,7 +558,9 @@ export async function fetchGlobalPoolPage(
   globalCollectionPath: string,
   options: { prefix?: string; after?: QueryDocumentSnapshot | null } = {}
 ): Promise<GlobalPoolPage> {
-  const constraints = [orderBy("label"), limit(PAGE_SIZE)];
+  // Explicitly typed: TypeScript's inference from the two-element array
+  // literal below is too narrow for the later `.push()` calls to typecheck.
+  const constraints: QueryConstraint[] = [orderBy("label"), limit(PAGE_SIZE)];
 
   if (options.after) {
     constraints.push(startAfter(options.after));
@@ -565,7 +568,11 @@ export async function fetchGlobalPoolPage(
     constraints.push(startAt(options.prefix));
   }
   if (options.prefix) {
-    constraints.push(endAt(options.prefix + ""));
+    // "\uf8ff" is a very high Unicode Private Use Area code point (written
+    // here as an explicit escape, not a raw invisible character, so it
+    // survives copy/paste and diffing) -- the standard Firestore idiom for
+    // a prefix-range query.
+    constraints.push(endAt(options.prefix + "\uf8ff"));
   }
 
   const snapshot = await getDocs(

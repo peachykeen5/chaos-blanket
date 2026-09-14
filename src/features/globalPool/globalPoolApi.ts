@@ -39,7 +39,7 @@ export async function fetchGlobalPoolPage(
     constraints.push(startAt(options.prefix));
   }
   if (options.prefix) {
-    constraints.push(endAt(options.prefix + ""));
+    constraints.push(endAt(options.prefix + "\uf8ff"));
   }
 
   const snapshot = await getDocs(
