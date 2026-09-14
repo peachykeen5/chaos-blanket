@@ -17,7 +17,7 @@
 ## Global Constraints
 
 - Backend: `contributeToGlobal` is the sole callable Cloud Function and the sole write path into the global pool.
-- Abuse protection: Firebase App Check in front of both Firestore and the Cloud Functions. The Cloud Functions emulator does not enforce App Check locally (it can't reach the live App Check backend) — it logs a warning and allows the call through, so `enforceAppCheck: true` stays in the deployed code without blocking the automated emulator tests in this plan. App Check itself is verified manually against the deployed app, not by these tests.
+- Abuse protection: Firebase App Check in front of both Firestore and the Cloud Functions. The Cloud Functions emulator DOES enforce `enforceAppCheck` — unlike Auth/Firestore/Functions, there is no App Check emulator, so any callable request without an `X-Firebase-AppCheck` header is rejected with `unauthenticated`, and the emulator-test client here never attaches one. `contributeToGlobal` conditionally disables enforcement via `process.env.FUNCTIONS_EMULATOR !== "true"`, an env var Cloud Functions' own runtime sets only inside the local emulator process — it is never present in a deployed function, so production security is unaffected. App Check itself is verified manually against the deployed app, not by these tests.
 - `contributeToGlobal` requires `context.auth` and a valid App Check token; validates label length 1–60; strips disallowed characters; rejects empty/whitespace-only input; runs a denylist check; rate-limits per user (~20/day, calendar-day UTC, per `users/{uid}/meta/rateLimit`).
 - Global Key: hex-when-present (lowercased, `#` stripped) else normalized label — see ADR 0001. First contributor's label wins on a key collision.
 - Never re-fires from an edit — only from "save to library" and "pull from Global Pool," both outside this function's own code (the function itself has no way to know why it was called, so this constraint is enforced by which client code paths call it, not by the function).
@@ -380,7 +380,7 @@ interface ContributeInput {
 }
 
 export const contributeToGlobal = onCall<ContributeInput>(
-  { enforceAppCheck: true },
+  { enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true" },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Sign in required.");
