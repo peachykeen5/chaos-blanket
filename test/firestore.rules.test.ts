@@ -143,6 +143,18 @@ describe("users/{uid}/** isolation", () => {
       setDoc(doc(aliceDb, "users/alice/projects/p2"), { name: "Blanket 2" })
     );
   });
+
+  it("allows a list query on the owner's own projects collection", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(getDocs(collection(aliceDb, "users/alice/projects")));
+  });
+
+  it("allows a list query on a nested project subcollection", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      getDocs(collection(aliceDb, "users/alice/projects/p1/colours"))
+    );
+  });
 });
 
 describe("default-deny for unmatched paths", () => {

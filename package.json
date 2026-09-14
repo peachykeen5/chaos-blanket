@@ -12,7 +12,7 @@
     "test": "vitest run --mode development",
     "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
     "test:emulator": "firebase emulators:exec --only auth,firestore \"vitest run --config vitest.emulator.config.ts --mode development\"",
-    "test:functions": "firebase emulators:exec --project demo-chaos-blanket --only firestore,functions \"npm --prefix functions run test:emulator\""
+    "test:functions": "npm --prefix functions run build && firebase emulators:exec --project demo-chaos-blanket --only firestore,functions \"npm --prefix functions run test:emulator\""
   },
   "dependencies": {
     "firebase": "^12.19.0",
