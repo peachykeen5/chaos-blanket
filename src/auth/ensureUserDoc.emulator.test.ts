@@ -21,6 +21,8 @@ describe("ensureUserDoc", () => {
     const snapshot = await getDoc(doc(db, userDocPath(user.uid)));
     expect(snapshot.exists()).toBe(true);
     expect(snapshot.data()?.email).toBe(user.email ?? "");
+    expect(snapshot.data()?.displayName).toBe(user.displayName ?? "");
+    expect(snapshot.data()?.createdAt).toBeTruthy();
   });
 
   it("does not overwrite an existing users/{uid} doc on a second call", async () => {
@@ -29,6 +31,7 @@ describe("ensureUserDoc", () => {
     await ensureUserDoc(user);
     const first = await getDoc(doc(db, userDocPath(user.uid)));
     const firstCreatedAt = first.data()?.createdAt;
+    expect(firstCreatedAt).toBeTruthy();
 
     await ensureUserDoc(user);
     const second = await getDoc(doc(db, userDocPath(user.uid)));

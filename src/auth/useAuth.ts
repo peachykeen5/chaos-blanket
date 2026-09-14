@@ -33,7 +33,8 @@ export function useAuth() {
     setState((s) => ({ ...s, error: null }));
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch {
+    } catch (err) {
+      console.error("signInWithPopup failed", err);
       setState((s) => ({
         ...s,
         error: "Sign-in was cancelled or blocked. Please try again.",
@@ -42,7 +43,11 @@ export function useAuth() {
   }
 
   async function signOut() {
-    await firebaseSignOut(auth);
+    try {
+      await firebaseSignOut(auth);
+    } catch (err) {
+      console.error("signOut failed", err);
+    }
   }
 
   return { ...state, signIn, signOut };

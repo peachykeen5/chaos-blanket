@@ -1,13 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ensureUserDoc } from "./auth/ensureUserDoc";
 import { SignIn } from "./auth/SignIn";
 import { useAuth } from "./auth/useAuth";
 
 export function App() {
   const { user, loading, signOut } = useAuth();
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) void ensureUserDoc(user);
+    if (!user) return;
+    ensureUserDoc(user).catch((err) => {
+      console.error("ensureUserDoc failed", err);
+      setBootstrapError("Couldn't set up your account. Try refreshing the page.");
+    });
   }, [user]);
 
   if (loading) {
@@ -33,6 +38,11 @@ export function App() {
       <p className="mt-4 text-sm text-gray-500">
         Signed in as {user.displayName ?? user.email}
       </p>
+      {bootstrapError && (
+        <p className="mt-2 text-sm text-red-600" role="alert">
+          {bootstrapError}
+        </p>
+      )}
     </div>
   );
 }
