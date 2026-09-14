@@ -13,6 +13,7 @@ import {
   renameProject,
   updateRowRange,
 } from "./projectsApi";
+import { SaveToLibraryButton } from "./SaveToLibraryButton";
 
 interface ProjectsPanelProps {
   uid: string;
@@ -190,11 +191,17 @@ export function ProjectsPanel({ uid }: ProjectsPanelProps) {
             title="Stitches"
             collectionPath={projectStitchesCollectionPath(uid, selected.id)}
             supportsHex={false}
+            renderExtraAction={(item, reload) => (
+              <SaveToLibraryButton uid={uid} kind="stitch" item={item} onDone={reload} />
+            )}
           />
           <ItemListEditor
             title="Colours"
             collectionPath={projectColoursCollectionPath(uid, selected.id)}
             supportsHex
+            renderExtraAction={(item, reload) => (
+              <SaveToLibraryButton uid={uid} kind="colour" item={item} onDone={reload} />
+            )}
           />
         </div>
       )}
