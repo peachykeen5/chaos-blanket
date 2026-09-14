@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ensureUserDoc } from "./auth/ensureUserDoc";
 import { SignIn } from "./auth/SignIn";
 import { useAuth } from "./auth/useAuth";
+import { ProjectsPanel } from "./features/projects/ProjectsPanel";
 
 export function App() {
   const { user, loading, signOut } = useAuth();
@@ -43,6 +44,7 @@ export function App() {
           {bootstrapError}
         </p>
       )}
+      <ProjectsPanel uid={user.uid} />
     </div>
   );
 }
