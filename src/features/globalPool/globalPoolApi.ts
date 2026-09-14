@@ -20,7 +20,7 @@ import { normalizeLabel } from "../../lib/normalize";
 import type { GlobalItemDoc } from "../../types";
 import { contributeItem } from "../../lib/contribute";
 
-const PAGE_SIZE = 30;
+export const PAGE_SIZE = 30;
 
 export interface GlobalPoolPage {
   items: GlobalItemDoc[];

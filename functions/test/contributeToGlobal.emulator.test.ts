@@ -110,4 +110,106 @@ describe("contributeToGlobal", () => {
       contribute({ kind: "stitch", label: "One too many" })
     ).rejects.toThrow();
   }, 30000);
+
+  it("rejects a colour contribution with an invalid hex and creates no document", async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    await expect(
+      contribute({ kind: "colour", label: "Not A Colour", hex: "not-a-colour" })
+    ).rejects.toThrow();
+
+    const snapshot = await getAdminFirestore().doc("globalColours/not-a-colour").get();
+    expect(snapshot.exists).toBe(false);
+  });
+
+  it("normalizes hex without a leading # and mixed case to canonical #rrggbb", async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    await contribute({ kind: "colour", label: "AB Colour", hex: "AB12CD" });
+
+    const snapshot = await getAdminFirestore().doc("globalColours/ab12cd").get();
+    expect(snapshot.data()).toMatchObject({ hex: "#ab12cd" });
+  });
+
+  it("rejects a stitch contribution that includes a hex field", async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    await expect(
+      contribute({ kind: "stitch", label: "Bad Stitch", hex: "#ff7f50" })
+    ).rejects.toThrow();
+  });
+
+  it('rejects kind: "not-a-real-kind" with invalid-argument', async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    await expect(
+      contribute({ kind: "not-a-real-kind", label: "Whatever" })
+    ).rejects.toThrow();
+  });
+
+  it("rejects a label that is a number instead of an internal error", async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    await expect(
+      contribute({ kind: "stitch", label: 12345 })
+    ).rejects.toThrow();
+  });
+
+  it("rejects a label that normalizes to an empty key", async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    await expect(
+      contribute({ kind: "stitch", label: "🧶🧶" })
+    ).rejects.toThrow();
+  });
+
+  it("strips a newline from a label before storing it", async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    const result = await contribute({
+      kind: "stitch",
+      label: "Alpha\nBravo",
+    });
+    const key = (result.data as { key: string }).key;
+
+    const snapshot = await getAdminFirestore().doc(`globalStitches/${key}`).get();
+    expect(snapshot.data()?.label).not.toContain("\n");
+  });
+
+  it("does not increment the caller's rate-limit count on an invalid-argument rejection", async () => {
+    const { auth, functions } = makeClient();
+    await signInAnonymously(auth);
+    const contribute = httpsCallable(functions, "contributeToGlobal");
+
+    const rateLimitRef = getAdminFirestore().doc(
+      `users/${auth.currentUser!.uid}/meta/rateLimit`
+    );
+    const before = await rateLimitRef.get();
+    const countBefore = before.exists ? before.data()?.count : undefined;
+
+    await expect(
+      contribute({ kind: "colour", label: "Bad Hex Colour", hex: "not-a-colour" })
+    ).rejects.toThrow();
+
+    const after = await rateLimitRef.get();
+    if (countBefore === undefined) {
+      expect(after.exists).toBe(false);
+    } else {
+      expect(after.data()?.count).toBe(countBefore);
+    }
+  });
 });

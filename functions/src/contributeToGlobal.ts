@@ -2,7 +2,12 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { computeGlobalKey } from "./normalize";
-import { isDenylisted, isValidLabel, sanitizeLabel } from "./validation";
+import {
+  isDenylisted,
+  isValidLabel,
+  normalizeHex,
+  sanitizeLabel,
+} from "./validation";
 
 if (!getApps().length) initializeApp();
 
@@ -23,8 +28,29 @@ export const contributeToGlobal = onCall<ContributeInput>(
       throw new HttpsError("unauthenticated", "Sign in required.");
     }
 
-    const label = sanitizeLabel(request.data.label ?? "");
-    const { kind, hex } = request.data;
+    const data = request.data;
+    if (typeof data !== "object" || data === null) {
+      throw new HttpsError("invalid-argument", "Request data is required.");
+    }
+
+    const { kind, label: rawLabel, hex: rawHex } = data;
+
+    if (kind !== "stitch" && kind !== "colour") {
+      throw new HttpsError(
+        "invalid-argument",
+        'kind must be "stitch" or "colour".'
+      );
+    }
+
+    if (typeof rawLabel !== "string") {
+      throw new HttpsError("invalid-argument", "Label must be a string.");
+    }
+
+    if (rawHex !== undefined && typeof rawHex !== "string") {
+      throw new HttpsError("invalid-argument", "Hex must be a string.");
+    }
+
+    const label = sanitizeLabel(rawLabel);
 
     if (!isValidLabel(label)) {
       throw new HttpsError(
@@ -36,11 +62,41 @@ export const contributeToGlobal = onCall<ContributeInput>(
       throw new HttpsError("invalid-argument", "Label not allowed.");
     }
 
-    const db = getFirestore();
-    await enforceRateLimit(db, request.auth.uid);
+    let hex: string | undefined;
+    if (kind === "colour") {
+      if (rawHex === undefined) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Hex colour must be 6 hex digits."
+        );
+      }
+      const normalized = normalizeHex(rawHex);
+      if (!normalized) {
+        throw new HttpsError(
+          "invalid-argument",
+          "Hex colour must be 6 hex digits."
+        );
+      }
+      hex = normalized;
+    } else if (rawHex !== undefined) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Stitch contributions must not include a hex value."
+      );
+    }
 
     const collectionName = kind === "stitch" ? "globalStitches" : "globalColours";
     const key = computeGlobalKey(label, hex);
+    if (key.length === 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Label does not contain any usable characters."
+      );
+    }
+
+    const db = getFirestore();
+    await enforceRateLimit(db, request.auth.uid);
+
     const ref = db.collection(collectionName).doc(key);
 
     await db.runTransaction(async (tx) => {
@@ -87,6 +143,7 @@ async function enforceRateLimit(
     });
   } catch (err) {
     if (err instanceof HttpsError) throw err;
+    console.error(err);
     throw new HttpsError(
       "aborted",
       "Too many contributions at once — please try again in a moment."
