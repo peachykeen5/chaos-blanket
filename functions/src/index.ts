@@ -1,2 +1,1 @@
-// Cloud Functions are added in later plans (contributeToGlobal, cascadeDeleteProject).
-export {};
+export { cascadeDeleteProject } from "./cascadeDeleteProject";
