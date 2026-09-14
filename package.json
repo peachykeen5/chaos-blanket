@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\""
+    "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
+    "test:emulator": "VITE_FIREBASE_API_KEY=test-api-key VITE_FIREBASE_PROJECT_ID=chaos-blanket firebase emulators:exec --only auth,firestore \"vitest run --config vitest.emulator.config.ts\""
   },
   "dependencies": {
     "firebase": "^12.19.0",
