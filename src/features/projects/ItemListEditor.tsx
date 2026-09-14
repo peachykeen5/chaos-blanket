@@ -16,12 +16,14 @@ interface ItemListEditorProps {
   title: string;
   collectionPath: string;
   supportsHex: boolean;
+  renderExtraAction?: (item: Item, reload: () => Promise<void>) => React.ReactNode;
 }
 
 export function ItemListEditor({
   title,
   collectionPath,
   supportsHex,
+  renderExtraAction,
 }: ItemListEditorProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [bulkText, setBulkText] = useState("");
@@ -125,6 +127,7 @@ export function ItemListEditor({
               >
                 Delete
               </button>
+              {renderExtraAction?.(item, reload)}
             </li>
           ))}
         </ul>
