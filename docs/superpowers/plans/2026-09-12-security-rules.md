@@ -284,6 +284,8 @@ service cloud.firestore {
 
 (Why a single-segment wildcard instead of recursive: Firestore Security Rules cannot index into a recursive-wildcard `path` variable (like `document[0]` from `{document=**}`) during `list` (collection-query) operations — only during single-document `get` operations. This limitation would silently block legitimate list queries under `users/{uid}/**`. Using a single-segment wildcard (`{collectionName}/{document=**}`) instead allows the rule to check the first collection name directly (`collectionName != 'meta'`) for both single-document and list operations. This covers all current and future subcollections, not just the three initially used (`stitches`, `colours`, `history`).)
 
+(Precisely what `collectionName != 'meta'` checks: `collectionName` is bound to the single path segment immediately beneath `users/{uid}` — i.e. the first path segment beneath the user doc — not "the collection name" at any depth. So `users/{uid}/meta/**` is blocked, but a hypothetical `users/{uid}/projects/{id}/meta/{x}` would NOT be — `collectionName` there would be `projects`, not `meta`. That matches the intended invariant, since the app never creates a subcollection literally named `meta` anywhere but directly under the user doc; a future plan adding one elsewhere would need its own guard.)
+
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `npm run test:rules`

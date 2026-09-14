@@ -338,6 +338,8 @@ export async function updateColourHex(
 Run: `npm run test:emulator`
 Expected: PASS
 
+**Note (execution history):** `fetchLabeledItems` runs a `getDocs` (list) query against `users/{uid}/projects/{id}/colours`. This only passes because `firestore.rules`'s owner-only rule was written as `match /{collectionName}/{document=**}` (checking `collectionName != 'meta'` on the first path segment) rather than a recursive `users/{uid}/{document=**}` pattern — Firestore Security Rules can't index into a recursive-wildcard `path` variable during `list` operations, only `get`. See the security-rules plan's Task 1 for the full fix; this task's emulator test is one of the things that would silently fail without it.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -545,6 +547,8 @@ export async function deleteProject(
 Run: `npm run test -- projectsApi.test.ts` — PASS (4 tests)
 Run: `npm run test:emulator` — PASS
 
+**Note (execution history):** the root `"test"` script must run as `vitest run --mode development` (already the case in `package.json`), not plain `vitest run` — plain unit tests still need the Firebase config from `.env.development` to construct the `db`/`auth` singletons this task's tests import, even though this task's own `projectsApi.test.ts` doesn't touch Firestore directly.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -569,6 +573,8 @@ git commit -m "feat: add Project CRUD with client-side row-range validation"
 ```bash
 npm --prefix functions install -D vitest
 ```
+
+**Note (execution history):** pin this to `vitest@^2.1.9` in `functions/package.json` (`npm --prefix functions install -D vitest@^2.1.9`) — that's the version actually in the repo, and keeping it pinned (rather than letting a fresh install float to a newer major) avoids config/API drift between `functions/`'s vitest and the root project's.
 
 - [ ] **Step 2: Split `functions/`'s tests into plain (no emulator needed) and emulator-backed**
 
@@ -608,8 +614,12 @@ export default defineConfig({
 Root `package.json`, in `"scripts"`:
 
 ```json
-"test:functions": "firebase emulators:exec --only firestore,functions \"npm --prefix functions run test:emulator\""
+"test:functions": "npm --prefix functions run build && firebase emulators:exec --project demo-chaos-blanket --only firestore,functions \"npm --prefix functions run test:emulator\""
 ```
+
+**Note (execution history):** two corrections were needed to this script during execution/review:
+- `--project demo-chaos-blanket` is required on the `firebase emulators:exec` call — without an explicit `--project`, the Functions emulator can pick up the wrong (or no) project id and the trigger under test won't register correctly.
+- the script must rebuild `functions/` first (`npm --prefix functions run build &&`). `firebase emulators:exec` does not run `firebase.json`'s `predeploy` hook, so without an explicit build step this command can pass purely off a stale `functions/lib` build artifact and never catch a real compile error in `functions/src`.
 
 - [ ] **Step 3: Write the failing test**
 
