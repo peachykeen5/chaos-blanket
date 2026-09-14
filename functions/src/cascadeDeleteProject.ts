@@ -11,14 +11,18 @@ export const cascadeDeleteProject = onDocumentDeleted(
   async (event) => {
     const db = getFirestore();
     const { uid, projectId } = event.params;
+    const projectRef = db.doc(`users/${uid}/projects/${projectId}`);
 
-    for (const subcollection of SUBCOLLECTIONS) {
-      const snapshot = await db
-        .collection(`users/${uid}/projects/${projectId}/${subcollection}`)
-        .get();
-      const batch = db.batch();
-      snapshot.docs.forEach((docSnapshot) => batch.delete(docSnapshot.ref));
-      await batch.commit();
-    }
+    // recursiveDelete chunks its writes internally, so it has no assumption
+    // about subcollection size — unlike a single manually-built WriteBatch,
+    // which throws (and drops this trigger's whole event, since
+    // onDocumentDeleted defaults to no retry) once a subcollection exceeds
+    // Firestore's 500-write batch limit. The plan places no cap on History
+    // size, so that limit is reachable in practice.
+    await Promise.all(
+      SUBCOLLECTIONS.map((subcollection) =>
+        db.recursiveDelete(projectRef.collection(subcollection))
+      )
+    );
   }
 );
