@@ -173,7 +173,7 @@ export default defineConfig({
 `package.json`, in `"scripts"`:
 
 ```json
-"test:emulator": "firebase emulators:exec --only auth,firestore \"vitest run --config vitest.emulator.config.ts\""
+"test:emulator": "firebase emulators:exec --only auth,firestore \"vitest run --config vitest.emulator.config.ts --mode development\""
 ```
 
 - [ ] **Step 2: Write the failing test**

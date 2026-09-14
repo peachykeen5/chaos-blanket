@@ -135,6 +135,20 @@ beforeEach(async () => {
 });
 
 describe("users/{uid}/** isolation", () => {
+  it("lets a signed-in user write their own top-level user doc", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(aliceDb, "users/alice"), { email: "alice@example.com" })
+    );
+  });
+
+  it("blocks a signed-in user from writing another user's top-level user doc", async () => {
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(aliceDb, "users/bob"), { email: "hijack@example.com" })
+    );
+  });
+
   it("lets a signed-in user read and write their own project doc", async () => {
     const aliceDb = testEnv.authenticatedContext("alice").firestore();
     await assertSucceeds(
@@ -273,7 +287,7 @@ service cloud.firestore {
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `npm run test:rules`
-Expected: PASS (all 10 tests)
+Expected: PASS (all 12 tests)
 
 - [ ] **Step 7: Commit**
 
@@ -386,7 +400,7 @@ Expected: the 5 new tests FAIL — `firestore.rules` has no `globalStitches`/`gl
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm run test:rules`
-Expected: PASS (all 15 tests)
+Expected: PASS (all 17 tests)
 
 - [ ] **Step 5: Commit**
 
