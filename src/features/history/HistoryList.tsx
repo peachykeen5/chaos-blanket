@@ -12,9 +12,14 @@ interface HistoryListProps {
 
 export function HistoryList({ uid, projectId, refreshKey }: HistoryListProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   async function reload() {
-    setEntries(await fetchHistory(uid, projectId));
+    try {
+      setEntries(await fetchHistory(uid, projectId));
+    } catch {
+      setError("Couldn't load history — check your connection and try again.");
+    }
   }
 
   useEffect(() => {
@@ -23,13 +28,19 @@ export function HistoryList({ uid, projectId, refreshKey }: HistoryListProps) {
   }, [uid, projectId, refreshKey]);
 
   async function handleDelete(entryId: string) {
-    await deleteItem(projectHistoryCollectionPath(uid, projectId), entryId);
-    await reload();
+    setError(null);
+    try {
+      await deleteItem(projectHistoryCollectionPath(uid, projectId), entryId);
+      await reload();
+    } catch {
+      setError("Couldn't delete that — check your connection and try again.");
+    }
   }
 
   return (
     <div className="mt-4">
       <h3 className="font-semibold text-gray-900">History</h3>
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       <ul className="mt-2 space-y-1">
         {entries.map((entry) => (
           <li key={entry.id} className="flex items-center gap-2 text-sm">
