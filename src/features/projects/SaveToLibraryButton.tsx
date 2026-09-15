@@ -27,6 +27,7 @@ export function SaveToLibraryButton({
 }: SaveToLibraryButtonProps) {
   const [loading, setLoading] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const [justSucceeded, setJustSucceeded] = useState(false);
   const libraryPath =
     kind === "stitch"
       ? stitchLibraryCollectionPath(uid)
@@ -42,11 +43,13 @@ export function SaveToLibraryButton({
         item,
         existing.map((i) => i.label)
       );
-      // Background contribution to the global pool — intentionally
-      // un-awaited and outside this try/catch; its own failure shouldn't
-      // block or fail the library save.
+      // Background contribution to the global pool — un-awaited — its
+      // rejection never reaches this catch, and it swallows its own errors
+      // internally.
       void contributeItem(kind, item.label, item.hex);
       await onDone();
+      setJustSucceeded(true);
+      setTimeout(() => setJustSucceeded(false), 2000);
     } catch {
       setWriteError("Couldn't save that — check your connection and try again.");
     } finally {
@@ -55,16 +58,23 @@ export function SaveToLibraryButton({
   }
 
   return (
-    <span>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={loading}
-        className="text-xs text-green-700 underline"
-      >
-        Save to library
-      </button>
-      {writeError && <p className="mt-1 text-sm text-red-600">{writeError}</p>}
+    <span className="flex flex-col">
+      <span className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={loading}
+          className="text-xs text-green-700 underline"
+        >
+          Save to library
+        </button>
+        {justSucceeded && (
+          <span className="ml-1 text-xs text-green-600">Saved ✓</span>
+        )}
+      </span>
+      {writeError && (
+        <span className="mt-1 block text-sm text-red-600">{writeError}</span>
+      )}
     </span>
   );
 }

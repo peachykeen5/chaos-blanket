@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ensureUserDoc } from "./auth/ensureUserDoc";
 import { SignIn } from "./auth/SignIn";
 import { useAuth } from "./auth/useAuth";
@@ -15,6 +15,8 @@ import {
 export function App() {
   const { user, loading, signOut } = useAuth();
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const bumpRefresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
     if (!user) return;
@@ -52,8 +54,8 @@ export function App() {
           {bootstrapError}
         </p>
       )}
-      <ProjectsPanel uid={user.uid} />
-      <LibraryPanel uid={user.uid} />
+      <ProjectsPanel uid={user.uid} refreshKey={refreshKey} onCrossPanelChange={bumpRefresh} />
+      <LibraryPanel uid={user.uid} refreshKey={refreshKey} onCrossPanelChange={bumpRefresh} />
       <div className="mt-6 border-t border-gray-200 pt-4">
         <h2 className="font-semibold text-gray-900">Browse global stitches</h2>
         <GlobalPoolBrowser

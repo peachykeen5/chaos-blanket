@@ -17,6 +17,7 @@ interface ItemListEditorProps {
   collectionPath: string;
   supportsHex: boolean;
   renderExtraAction?: (item: Item, reload: () => Promise<void>) => React.ReactNode;
+  refreshKey?: number;
 }
 
 export function ItemListEditor({
@@ -24,6 +25,7 @@ export function ItemListEditor({
   collectionPath,
   supportsHex,
   renderExtraAction,
+  refreshKey,
 }: ItemListEditorProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [bulkText, setBulkText] = useState("");
@@ -43,7 +45,7 @@ export function ItemListEditor({
 
   useEffect(() => {
     void reload();
-  }, [collectionPath]);
+  }, [collectionPath, refreshKey]);
 
   // Every write below keeps the textarea/list untouched on failure (there's
   // no optimistic local update to roll back — reload() only runs after a

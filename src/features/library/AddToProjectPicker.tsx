@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { addLabeledItemWithHex, fetchLabeledItems } from "../../lib/lists";
 import {
   projectColoursCollectionPath,
   projectStitchesCollectionPath,
 } from "../../lib/paths";
 import type { Project } from "../../types";
-import { listProjects } from "../projects/projectsApi";
 
 interface Item {
   id: string;
@@ -17,6 +16,7 @@ interface AddToProjectPickerProps {
   uid: string;
   kind: "stitch" | "colour";
   item: Item;
+  projects: Project[];
   onDone: () => Promise<void>;
 }
 
@@ -24,16 +24,13 @@ export function AddToProjectPicker({
   uid,
   kind,
   item,
+  projects,
   onDone,
 }: AddToProjectPickerProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [loading, setLoading] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void listProjects(uid).then(setProjects);
-  }, [uid]);
+  const [justSucceeded, setJustSucceeded] = useState(false);
 
   async function handleAdd() {
     if (!selectedProjectId) return;
@@ -51,6 +48,8 @@ export function AddToProjectPicker({
         existing.map((i) => i.label)
       );
       await onDone();
+      setJustSucceeded(true);
+      setTimeout(() => setJustSucceeded(false), 2000);
     } catch {
       setWriteError("Couldn't save that — check your connection and try again.");
     } finally {
@@ -59,28 +58,35 @@ export function AddToProjectPicker({
   }
 
   return (
-    <span className="flex items-center gap-1 text-xs">
-      <select
-        value={selectedProjectId}
-        onChange={(e) => setSelectedProjectId(e.target.value)}
-        className="rounded border border-gray-300 text-xs"
-      >
-        <option value="">Add to project…</option>
-        {projects.map((project) => (
-          <option key={project.id} value={project.id}>
-            {project.name}
-          </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        onClick={handleAdd}
-        disabled={loading}
-        className="text-blue-600 underline"
-      >
-        Add
-      </button>
-      {writeError && <p className="mt-1 text-sm text-red-600">{writeError}</p>}
+    <span className="flex flex-col text-xs">
+      <span className="flex items-center gap-1">
+        <select
+          value={selectedProjectId}
+          onChange={(e) => setSelectedProjectId(e.target.value)}
+          className="rounded border border-gray-300 text-xs"
+        >
+          <option value="">Add to project…</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={loading}
+          className="text-blue-600 underline"
+        >
+          Add
+        </button>
+        {justSucceeded && (
+          <span className="ml-1 text-xs text-green-600">Added ✓</span>
+        )}
+      </span>
+      {writeError && (
+        <span className="mt-1 block text-sm text-red-600">{writeError}</span>
+      )}
     </span>
   );
 }

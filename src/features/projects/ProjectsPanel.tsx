@@ -17,9 +17,15 @@ import { SaveToLibraryButton } from "./SaveToLibraryButton";
 
 interface ProjectsPanelProps {
   uid: string;
+  refreshKey: number;
+  onCrossPanelChange: () => void;
 }
 
-export function ProjectsPanel({ uid }: ProjectsPanelProps) {
+export function ProjectsPanel({
+  uid,
+  refreshKey,
+  onCrossPanelChange,
+}: ProjectsPanelProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -52,6 +58,7 @@ export function ProjectsPanel({ uid }: ProjectsPanelProps) {
       await createProject(uid, { name, rowMin, rowMax });
       setName("");
       await reload();
+      onCrossPanelChange();
     } catch {
       setFormError("Couldn't create the project — check your connection and try again.");
     }
@@ -63,6 +70,7 @@ export function ProjectsPanel({ uid }: ProjectsPanelProps) {
       await deleteProject(uid, projectId);
       if (selectedId === projectId) setSelectedId(null);
       await reload();
+      onCrossPanelChange();
     } catch {
       setFormError("Couldn't delete the project — check your connection and try again.");
     }
@@ -191,16 +199,32 @@ export function ProjectsPanel({ uid }: ProjectsPanelProps) {
             title="Stitches"
             collectionPath={projectStitchesCollectionPath(uid, selected.id)}
             supportsHex={false}
-            renderExtraAction={(item, reload) => (
-              <SaveToLibraryButton uid={uid} kind="stitch" item={item} onDone={reload} />
+            refreshKey={refreshKey}
+            renderExtraAction={(item) => (
+              <SaveToLibraryButton
+                uid={uid}
+                kind="stitch"
+                item={item}
+                onDone={async () => {
+                  onCrossPanelChange();
+                }}
+              />
             )}
           />
           <ItemListEditor
             title="Colours"
             collectionPath={projectColoursCollectionPath(uid, selected.id)}
             supportsHex
-            renderExtraAction={(item, reload) => (
-              <SaveToLibraryButton uid={uid} kind="colour" item={item} onDone={reload} />
+            refreshKey={refreshKey}
+            renderExtraAction={(item) => (
+              <SaveToLibraryButton
+                uid={uid}
+                kind="colour"
+                item={item}
+                onDone={async () => {
+                  onCrossPanelChange();
+                }}
+              />
             )}
           />
         </div>
