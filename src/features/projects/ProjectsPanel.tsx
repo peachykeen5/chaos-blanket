@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GenerateAndHistoryPanel } from "../generate/GenerateAndHistoryPanel";
 import {
   projectColoursCollectionPath,
   projectStitchesCollectionPath,
@@ -227,6 +228,7 @@ export function ProjectsPanel({
               />
             )}
           />
+          <GenerateAndHistoryPanel uid={uid} project={selected} />
         </div>
       )}
     </div>
