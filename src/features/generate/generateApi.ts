@@ -14,6 +14,7 @@ import {
   projectStitchesCollectionPath,
 } from "../../lib/paths";
 import type { ColourItem, HistoryEntry, Project, StitchItem } from "../../types";
+import { isValidRowRange } from "../projects/projectsApi";
 import { pickRandomInclusive, pickRandomItem } from "./random";
 
 export async function generateSegment(
@@ -29,6 +30,10 @@ export async function generateSegment(
     throw new Error(
       "This project needs at least one stitch and one colour to generate."
     );
+  }
+
+  if (!isValidRowRange(project.rowMin, project.rowMax)) {
+    throw new Error("This project's row range is invalid.");
   }
 
   const stitch = pickRandomItem(stitches);

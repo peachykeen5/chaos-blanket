@@ -11,12 +11,14 @@ interface GlobalPoolBrowserProps {
   kind: "stitch" | "colour";
   globalCollectionPath: string;
   libraryCollectionPath: string;
+  onCrossPanelChange: () => void;
 }
 
 export function GlobalPoolBrowser({
   kind,
   globalCollectionPath,
   libraryCollectionPath,
+  onCrossPanelChange,
 }: GlobalPoolBrowserProps) {
   const [prefix, setPrefix] = useState("");
   const [items, setItems] = useState<GlobalItemDoc[]>([]);
@@ -24,6 +26,7 @@ export function GlobalPoolBrowser({
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justSucceededId, setJustSucceededId] = useState<string | null>(null);
 
   async function search(reset: boolean) {
     setError(null);
@@ -54,6 +57,9 @@ export function GlobalPoolBrowser({
     setLoading(true);
     try {
       await pullIntoLibrary(libraryCollectionPath, kind, item);
+      onCrossPanelChange();
+      setJustSucceededId(item.id);
+      setTimeout(() => setJustSucceededId(null), 2000);
     } catch {
       setError("Couldn't add that to your library — check your connection and try again.");
     } finally {
@@ -93,6 +99,9 @@ export function GlobalPoolBrowser({
             >
               Add to my library
             </button>
+            {justSucceededId === item.id && (
+              <span className="ml-1 text-xs text-green-600">Added ✓</span>
+            )}
           </li>
         ))}
       </ul>

@@ -18,6 +18,7 @@ interface ItemListEditorProps {
   supportsHex: boolean;
   renderExtraAction?: (item: Item, reload: () => Promise<void>) => React.ReactNode;
   refreshKey?: number;
+  onChanged?: () => void;
 }
 
 export function ItemListEditor({
@@ -26,6 +27,7 @@ export function ItemListEditor({
   supportsHex,
   renderExtraAction,
   refreshKey,
+  onChanged,
 }: ItemListEditorProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [bulkText, setBulkText] = useState("");
@@ -61,6 +63,7 @@ export function ItemListEditor({
       );
       setBulkText("");
       await reload();
+      onChanged?.();
     } catch {
       setWriteError("Couldn't save that — check your connection and try again.");
     }
@@ -71,6 +74,7 @@ export function ItemListEditor({
     try {
       await deleteItem(collectionPath, itemId);
       await reload();
+      onChanged?.();
     } catch {
       setWriteError("Couldn't delete that — check your connection and try again.");
     }
@@ -81,6 +85,7 @@ export function ItemListEditor({
     try {
       await updateColourHex(collectionPath, itemId, hex);
       await reload();
+      onChanged?.();
     } catch {
       setWriteError("Couldn't save that hex — check your connection and try again.");
     }

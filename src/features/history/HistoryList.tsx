@@ -17,6 +17,7 @@ export function HistoryList({ uid, projectId, refreshKey }: HistoryListProps) {
   async function reload() {
     try {
       setEntries(await fetchHistory(uid, projectId));
+      setError(null);
     } catch {
       setError("Couldn't load history — check your connection and try again.");
     }

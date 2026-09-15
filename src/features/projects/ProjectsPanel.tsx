@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { GenerateAndHistoryPanel } from "../generate/GenerateAndHistoryPanel";
 import {
   projectColoursCollectionPath,
   projectStitchesCollectionPath,
 } from "../../lib/paths";
 import type { Project } from "../../types";
+import { GenerateAndHistoryPanel } from "../generate/GenerateAndHistoryPanel";
 import { ItemListEditor } from "./ItemListEditor";
 import {
   createProject,
@@ -201,6 +201,7 @@ export function ProjectsPanel({
             collectionPath={projectStitchesCollectionPath(uid, selected.id)}
             supportsHex={false}
             refreshKey={refreshKey}
+            onChanged={onCrossPanelChange}
             renderExtraAction={(item) => (
               <SaveToLibraryButton
                 uid={uid}
@@ -217,6 +218,7 @@ export function ProjectsPanel({
             collectionPath={projectColoursCollectionPath(uid, selected.id)}
             supportsHex
             refreshKey={refreshKey}
+            onChanged={onCrossPanelChange}
             renderExtraAction={(item) => (
               <SaveToLibraryButton
                 uid={uid}
@@ -228,7 +230,7 @@ export function ProjectsPanel({
               />
             )}
           />
-          <GenerateAndHistoryPanel uid={uid} project={selected} />
+          <GenerateAndHistoryPanel uid={uid} project={selected} refreshKey={refreshKey} />
         </div>
       )}
     </div>

@@ -11,10 +11,16 @@ import { generateSegment } from "./generateApi";
 interface GeneratePanelProps {
   uid: string;
   project: Project;
+  refreshKey: number;
   onGenerated: () => Promise<void>;
 }
 
-export function GeneratePanel({ uid, project, onGenerated }: GeneratePanelProps) {
+export function GeneratePanel({
+  uid,
+  project,
+  refreshKey,
+  onGenerated,
+}: GeneratePanelProps) {
   const [stitchCount, setStitchCount] = useState<number | null>(null);
   const [colourCount, setColourCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +33,7 @@ export function GeneratePanel({ uid, project, onGenerated }: GeneratePanelProps)
       ]);
       setStitchCount(stitches.length);
       setColourCount(colours.length);
+      setError(null);
     } catch {
       setError("Couldn't load stitches/colours — check your connection and try again.");
     }
@@ -34,8 +41,7 @@ export function GeneratePanel({ uid, project, onGenerated }: GeneratePanelProps)
 
   useEffect(() => {
     void reloadCounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid, project.id]);
+  }, [uid, project.id, refreshKey]);
 
   // Counts not having loaded yet is handled separately from disabledReason
   // below (as a "Loading…" placeholder, or the `error` message if the load
@@ -56,10 +62,11 @@ export function GeneratePanel({ uid, project, onGenerated }: GeneratePanelProps)
     : null;
 
   // Reusing the single `error` state for both this mount-time load failure
-  // and Generate-click failures: they're mutually exclusive in time (a
-  // failed load leaves countsLoaded false, which keeps the button disabled,
-  // so there's no click to fail afterwards) and the UI only ever needs to
-  // show one error message at a time.
+  // and Generate-click failures. On a failed click, reloadCounts() runs
+  // first so the disabled state re-syncs immediately (e.g. the project ran
+  // out of stitches mid-session), then the click's own error message is set
+  // afterward so it isn't clobbered by reloadCounts()'s own
+  // setError(null)-on-success.
   async function handleClick() {
     setError(null);
     try {
@@ -67,6 +74,7 @@ export function GeneratePanel({ uid, project, onGenerated }: GeneratePanelProps)
       await reloadCounts();
       await onGenerated();
     } catch (err) {
+      await reloadCounts();
       setError(err instanceof Error ? err.message : "Generate failed.");
     }
   }

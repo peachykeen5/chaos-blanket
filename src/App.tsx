@@ -62,12 +62,14 @@ export function App() {
           kind="stitch"
           globalCollectionPath={globalStitchesCollectionPath()}
           libraryCollectionPath={stitchLibraryCollectionPath(user.uid)}
+          onCrossPanelChange={bumpRefresh}
         />
         <h2 className="mt-6 font-semibold text-gray-900">Browse global colours</h2>
         <GlobalPoolBrowser
           kind="colour"
           globalCollectionPath={globalColoursCollectionPath()}
           libraryCollectionPath={colourLibraryCollectionPath(user.uid)}
+          onCrossPanelChange={bumpRefresh}
         />
       </div>
     </div>

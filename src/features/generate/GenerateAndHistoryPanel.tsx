@@ -6,22 +6,25 @@ import { GeneratePanel } from "./GeneratePanel";
 interface GenerateAndHistoryPanelProps {
   uid: string;
   project: Project;
+  refreshKey: number;
 }
 
 export function GenerateAndHistoryPanel({
   uid,
   project,
+  refreshKey,
 }: GenerateAndHistoryPanelProps) {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   return (
     <div className="mt-6 border-t border-gray-200 pt-4">
       <GeneratePanel
         uid={uid}
         project={project}
-        onGenerated={async () => setRefreshKey((k) => k + 1)}
+        refreshKey={refreshKey}
+        onGenerated={async () => setHistoryRefreshKey((k) => k + 1)}
       />
-      <HistoryList uid={uid} projectId={project.id} refreshKey={refreshKey} />
+      <HistoryList uid={uid} projectId={project.id} refreshKey={historyRefreshKey} />
     </div>
   );
 }
