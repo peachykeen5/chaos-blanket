@@ -60,12 +60,14 @@ describe("contributeToGlobal", () => {
     await signInAnonymously(auth);
     const contribute = httpsCallable(functions, "contributeToGlobal");
 
-    await contribute({ kind: "colour", label: "Coral", hex: "#FF7F50" });
-    await contribute({ kind: "colour", label: "Coral (again)", hex: "#FF7F50" });
+    await contribute({ kind: "stitch", label: "Single Crochet" });
+    await contribute({ kind: "stitch", label: "single crochet" });
 
-    const snapshot = await getAdminFirestore().doc("globalColours/ff7f50").get();
+    const snapshot = await getAdminFirestore()
+      .doc("globalStitches/single-crochet")
+      .get();
     expect(snapshot.data()?.contributorCount).toBe(2);
-    expect(snapshot.data()?.label).toBe("Coral");
+    expect(snapshot.data()?.label).toBe("Single Crochet");
   });
 
   it("rejects a label over 60 characters", async () => {
@@ -111,37 +113,26 @@ describe("contributeToGlobal", () => {
     ).rejects.toThrow();
   }, 30000);
 
-  it("rejects a colour contribution with an invalid hex and creates no document", async () => {
+  it("rejects a contribution that includes a hex field (colour contributions are no longer supported)", async () => {
     const { auth, functions } = makeClient();
     await signInAnonymously(auth);
     const contribute = httpsCallable(functions, "contributeToGlobal");
 
     await expect(
-      contribute({ kind: "colour", label: "Not A Colour", hex: "not-a-colour" })
+      contribute({ label: "Bad Stitch", hex: "#ff7f50" })
     ).rejects.toThrow();
 
-    const snapshot = await getAdminFirestore().doc("globalColours/not-a-colour").get();
+    const snapshot = await getAdminFirestore().doc("globalStitches/bad-stitch").get();
     expect(snapshot.exists).toBe(false);
   });
 
-  it("normalizes hex without a leading # and mixed case to canonical #rrggbb", async () => {
-    const { auth, functions } = makeClient();
-    await signInAnonymously(auth);
-    const contribute = httpsCallable(functions, "contributeToGlobal");
-
-    await contribute({ kind: "colour", label: "AB Colour", hex: "AB12CD" });
-
-    const snapshot = await getAdminFirestore().doc("globalColours/ab12cd").get();
-    expect(snapshot.data()).toMatchObject({ hex: "#ab12cd" });
-  });
-
-  it("rejects a stitch contribution that includes a hex field", async () => {
+  it('rejects kind: "colour" with invalid-argument', async () => {
     const { auth, functions } = makeClient();
     await signInAnonymously(auth);
     const contribute = httpsCallable(functions, "contributeToGlobal");
 
     await expect(
-      contribute({ kind: "stitch", label: "Bad Stitch", hex: "#ff7f50" })
+      contribute({ kind: "colour", label: "Whatever" })
     ).rejects.toThrow();
   });
 
@@ -202,7 +193,7 @@ describe("contributeToGlobal", () => {
     const countBefore = before.exists ? before.data()?.count : undefined;
 
     await expect(
-      contribute({ kind: "colour", label: "Bad Hex Colour", hex: "not-a-colour" })
+      contribute({ label: "Bad Stitch", hex: "not-allowed" })
     ).rejects.toThrow();
 
     const after = await rateLimitRef.get();

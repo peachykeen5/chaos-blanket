@@ -37,11 +37,10 @@ export interface HistoryEntry {
   generatedAt: Timestamp | null;
 }
 
-/** A document in globalStitches or globalColours. */
+/** A document in globalStitches — the Global Pool holds Stitches only. */
 export interface GlobalItemDoc {
   id: string;
   label: string;
-  hex?: string;
   createdAt: Timestamp | null;
   contributorCount: number;
   imageUrl?: string;

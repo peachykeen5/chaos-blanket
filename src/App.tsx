@@ -6,8 +6,6 @@ import { GlobalPoolBrowser } from "./features/globalPool/GlobalPoolBrowser";
 import { LibraryPanel } from "./features/library/LibraryPanel";
 import { ProjectsPanel } from "./features/projects/ProjectsPanel";
 import {
-  colourLibraryCollectionPath,
-  globalColoursCollectionPath,
   globalStitchesCollectionPath,
   stitchLibraryCollectionPath,
 } from "./lib/paths";
@@ -59,16 +57,8 @@ export function App() {
       <div className="mt-6 border-t border-gray-200 pt-4">
         <h2 className="font-semibold text-gray-900">Browse global stitches</h2>
         <GlobalPoolBrowser
-          kind="stitch"
           globalCollectionPath={globalStitchesCollectionPath()}
           libraryCollectionPath={stitchLibraryCollectionPath(user.uid)}
-          onCrossPanelChange={bumpRefresh}
-        />
-        <h2 className="mt-6 font-semibold text-gray-900">Browse global colours</h2>
-        <GlobalPoolBrowser
-          kind="colour"
-          globalCollectionPath={globalColoursCollectionPath()}
-          libraryCollectionPath={colourLibraryCollectionPath(user.uid)}
           onCrossPanelChange={bumpRefresh}
         />
       </div>

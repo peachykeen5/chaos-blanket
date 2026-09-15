@@ -11,12 +11,7 @@ import {
   startAt,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
-import {
-  bulkAddLabels,
-  fetchLabeledItems,
-  updateColourHex,
-} from "../../lib/lists";
-import { normalizeLabel } from "../../lib/normalize";
+import { bulkAddLabels, fetchLabeledItems } from "../../lib/lists";
 import type { GlobalItemDoc } from "../../types";
 import { contributeItem } from "../../lib/contribute";
 
@@ -61,27 +56,16 @@ export async function fetchGlobalPoolPage(
  */
 export async function pullIntoLibrary(
   libraryCollectionPath: string,
-  kind: "stitch" | "colour",
   item: GlobalItemDoc
 ): Promise<void> {
   const existing = await fetchLabeledItems<{ id: string; label: string }>(
     libraryCollectionPath
   );
-  const added = await bulkAddLabels(
+  await bulkAddLabels(
     libraryCollectionPath,
     item.label,
     existing.map((i) => i.label)
   );
 
-  if (added > 0 && kind === "colour" && item.hex) {
-    const refreshed = await fetchLabeledItems<{ id: string; label: string }>(
-      libraryCollectionPath
-    );
-    const created = refreshed.find(
-      (i) => normalizeLabel(i.label) === normalizeLabel(item.label)
-    );
-    if (created) await updateColourHex(libraryCollectionPath, created.id, item.hex);
-  }
-
-  void contributeItem(kind, item.label, item.hex);
+  void contributeItem(item.label);
 }

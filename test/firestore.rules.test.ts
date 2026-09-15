@@ -167,7 +167,7 @@ describe("default-deny for unmatched paths", () => {
   });
 });
 
-describe("globalStitches / globalColours", () => {
+describe("globalStitches", () => {
   it("lets any signed-in user read a global stitch", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), "globalStitches/double-crochet"), {
@@ -181,14 +181,31 @@ describe("globalStitches / globalColours", () => {
 
   it("blocks an unauthenticated client from reading global collections", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "globalStitches/red"), {
+        label: "Red",
+        contributorCount: 1,
+      });
+    });
+    const anonDb = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(anonDb, "globalStitches/red")));
+  });
+
+  it("blocks any access to the removed globalColours collection (Global Pool is Stitches-only)", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), "globalColours/ff0000"), {
         label: "Red",
         hex: "#ff0000",
         contributorCount: 1,
       });
     });
-    const anonDb = testEnv.unauthenticatedContext().firestore();
-    await assertFails(getDoc(doc(anonDb, "globalColours/ff0000")));
+    const aliceDb = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(getDoc(doc(aliceDb, "globalColours/ff0000")));
+    await assertFails(
+      setDoc(doc(aliceDb, "globalColours/newcolour"), {
+        label: "New Colour",
+        contributorCount: 1,
+      })
+    );
   });
 
   it("blocks a signed-in user from writing directly to a global collection", async () => {

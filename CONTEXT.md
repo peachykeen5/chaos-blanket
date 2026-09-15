@@ -67,9 +67,11 @@ and Colours, reusable across any of their Projects.
 _Avoid_: Library (ambiguous with Global Pool), Saved items
 
 **Global Pool**:
-The public, deduplicated collection of Stitches and Colours contributed by
-all users, browsable read-only by any signed-in user and never directly
-writable by a client.
+The public, deduplicated collection of Stitches contributed by all users,
+browsable read-only by any signed-in user and never directly writable by a
+client. Stitches only — Colours are never contributed to or browsable from
+the Global Pool (they still exist in Project Lists and the Account
+Library).
 _Avoid_: Library, Global library, Shared pool
 
 ### Contribution & abuse prevention
@@ -82,11 +84,10 @@ an Item afterward (e.g. adding a Hex to a Colour) never re-fires it.
 _Avoid_: Contribute, Publish, Submit
 
 **Global Key**:
-The deterministic Global Pool document ID derived from an Item being
+The deterministic Global Pool document ID derived from a Stitch being
 contributed: a normalized form of the Label (lowercased, trimmed,
-punctuation-stripped), or the Hex code for a Colour when one is present.
-Two Contributions that resolve to the same Global Key are the same Global
-Pool entry; the first contributor's Label wins.
+punctuation-stripped). Two Contributions that resolve to the same Global
+Key are the same Global Pool entry; the first contributor's Label wins.
 _Avoid_: Normalized ID, Dedup key
 
 **Contributor Count**:

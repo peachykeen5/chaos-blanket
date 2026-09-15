@@ -21,5 +21,3 @@ export const projectHistoryCollectionPath = (uid: string, projectId: string) =>
   `${projectDocPath(uid, projectId)}/history`;
 
 export const globalStitchesCollectionPath = () => "globalStitches";
-
-export const globalColoursCollectionPath = () => "globalColours";

@@ -43,10 +43,13 @@ export function SaveToLibraryButton({
         item,
         existing.map((i) => i.label)
       );
-      // Background contribution to the global pool — un-awaited — its
+      // Background contribution to the Global Pool — Stitches only, since
+      // the Global Pool no longer accepts Colours. Un-awaited — its
       // rejection never reaches this catch, and it swallows its own errors
       // internally.
-      void contributeItem(kind, item.label, item.hex);
+      if (kind === "stitch") {
+        void contributeItem(item.label);
+      }
       await onDone();
       setJustSucceeded(true);
       setTimeout(() => setJustSucceeded(false), 2000);

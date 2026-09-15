@@ -1,7 +1,4 @@
-export function computeGlobalKey(label: string, hex?: string): string {
-  if (hex) {
-    return hex.trim().replace(/^#/, "").toLowerCase();
-  }
+export function computeGlobalKey(label: string): string {
   return label
     .trim()
     .toLowerCase()

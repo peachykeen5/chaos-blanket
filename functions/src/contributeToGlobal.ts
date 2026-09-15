@@ -2,21 +2,14 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { computeGlobalKey } from "./normalize";
-import {
-  isDenylisted,
-  isValidLabel,
-  normalizeHex,
-  sanitizeLabel,
-} from "./validation";
+import { isDenylisted, isValidLabel, sanitizeLabel } from "./validation";
 
 if (!getApps().length) initializeApp();
 
 const DAILY_LIMIT = 20;
 
 interface ContributeInput {
-  kind: "stitch" | "colour";
   label: string;
-  hex?: string;
 }
 
 export const contributeToGlobal = onCall<ContributeInput>(
@@ -33,21 +26,27 @@ export const contributeToGlobal = onCall<ContributeInput>(
       throw new HttpsError("invalid-argument", "Request data is required.");
     }
 
-    const { kind, label: rawLabel, hex: rawHex } = data;
-
-    if (kind !== "stitch" && kind !== "colour") {
+    // The Global Pool only ever held Stitches; Colour contributions were
+    // removed. A `kind`/`hex` field on the request means a stale client is
+    // still speaking the old (Stitch + Colour) contract — reject explicitly
+    // rather than silently reinterpreting it as a Stitch.
+    if ("kind" in data && data.kind !== "stitch") {
       throw new HttpsError(
         "invalid-argument",
-        'kind must be "stitch" or "colour".'
+        "Only stitch contributions are supported."
+      );
+    }
+    if ("hex" in data && data.hex !== undefined) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Colour contributions are no longer supported."
       );
     }
 
+    const { label: rawLabel } = data;
+
     if (typeof rawLabel !== "string") {
       throw new HttpsError("invalid-argument", "Label must be a string.");
-    }
-
-    if (rawHex !== undefined && typeof rawHex !== "string") {
-      throw new HttpsError("invalid-argument", "Hex must be a string.");
     }
 
     const label = sanitizeLabel(rawLabel);
@@ -62,31 +61,7 @@ export const contributeToGlobal = onCall<ContributeInput>(
       throw new HttpsError("invalid-argument", "Label not allowed.");
     }
 
-    let hex: string | undefined;
-    if (kind === "colour") {
-      if (rawHex === undefined) {
-        throw new HttpsError(
-          "invalid-argument",
-          "Hex colour must be 6 hex digits."
-        );
-      }
-      const normalized = normalizeHex(rawHex);
-      if (!normalized) {
-        throw new HttpsError(
-          "invalid-argument",
-          "Hex colour must be 6 hex digits."
-        );
-      }
-      hex = normalized;
-    } else if (rawHex !== undefined) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Stitch contributions must not include a hex value."
-      );
-    }
-
-    const collectionName = kind === "stitch" ? "globalStitches" : "globalColours";
-    const key = computeGlobalKey(label, hex);
+    const key = computeGlobalKey(label);
     if (key.length === 0) {
       throw new HttpsError(
         "invalid-argument",
@@ -97,7 +72,7 @@ export const contributeToGlobal = onCall<ContributeInput>(
     const db = getFirestore();
     await enforceRateLimit(db, request.auth.uid);
 
-    const ref = db.collection(collectionName).doc(key);
+    const ref = db.collection("globalStitches").doc(key);
 
     await db.runTransaction(async (tx) => {
       const snapshot = await tx.get(ref);
@@ -106,7 +81,6 @@ export const contributeToGlobal = onCall<ContributeInput>(
       } else {
         tx.set(ref, {
           label,
-          ...(hex ? { hex } : {}),
           createdAt: FieldValue.serverTimestamp(),
           contributorCount: 1,
         });

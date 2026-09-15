@@ -77,18 +77,19 @@ users/{uid}/projects/{projectId}/history/{entryId}
 
 globalStitches/{normalizedId}          ← public, read-only from client
   - label, createdAt, contributorCount, imageUrl (optional, unused for now)
-
-globalColours/{normalizedId}
-  - label, hex (optional), createdAt, contributorCount
 ```
+
+The Global Pool holds Stitches only — Colours are never contributed to or
+browsable from it (they still live in Project Lists and the Account
+Library).
 
 Notes:
 - Project-level stitches/colours are independent docs from account
   library items — copying between project, library, and global pool is
   always a duplicate-write, never a shared reference.
-- Global collection document IDs are a normalized form of the label
-  (lowercased, trimmed, punctuation-stripped — or the hex code for
-  colours when present), so dedup is just "does this doc ID exist."
+- The global collection's document IDs are a normalized form of the label
+  (lowercased, trimmed, punctuation-stripped), so dedup is just "does this
+  doc ID exist."
 - `contributorCount` is internal bookkeeping (e.g. for future "popular
   stitches" sorting) and is never attributed to a specific user in the UI.
 
@@ -100,13 +101,15 @@ Notes:
   the relevant subcollection. Items can be edited/deleted individually
   afterward.
 - **Save a project item to account library:** client copies the item
-  into `users/{uid}/stitchLibrary` or `colourLibrary` directly, then
-  fires `contributeToGlobal` in the background (non-blocking).
-- **Browse global pool:** a panel reads `globalStitches`/`globalColours`
-  (paginated, alphabetical, prefix-search), read-only for any signed-in
-  user. Selecting an item copies it into the user's account library
-  (direct write) and triggers the same background contribute call (a
-  no-op if it already exists).
+  into `users/{uid}/stitchLibrary` or `colourLibrary` directly. For a
+  Stitch, this also fires `contributeToGlobal` in the background
+  (non-blocking) — Colours are never contributed, since the Global Pool
+  is Stitches-only.
+- **Browse global pool:** a panel reads `globalStitches` (paginated,
+  alphabetical, prefix-search), read-only for any signed-in user.
+  Selecting a stitch copies it into the user's account library (direct
+  write) and triggers the same background contribute call (a no-op if it
+  already exists).
 - **Add library item to a project:** direct client write copying the
   chosen item into the project's `stitches`/`colours` subcollection.
 - **Generate:** fully client-side — pick one random doc from the
@@ -124,9 +127,10 @@ Notes:
 
 - **Firestore Security Rules:**
   - `users/{uid}/**` — read/write only when `request.auth.uid == uid`.
-  - `globalStitches/**` / `globalColours/**` — read allowed for any
-    signed-in user; all direct client writes denied. The only write path
-    is the Cloud Function (Admin SDK, bypasses rules).
+  - `globalStitches/**` — read allowed for any signed-in user; all direct
+    client writes denied. The only write path is the Cloud Function
+    (Admin SDK, bypasses rules). There is no `globalColours` collection —
+    the Global Pool is Stitches-only.
 - **`contributeToGlobal` Cloud Function:**
   - Requires `context.auth` and a valid App Check token.
   - Validates label length (1–60 chars), strips disallowed characters,

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   colourLibraryCollectionPath,
-  globalColoursCollectionPath,
   globalStitchesCollectionPath,
   projectColoursCollectionPath,
   projectDocPath,
@@ -29,6 +28,5 @@ describe("paths", () => {
       "users/u1/projects/p1/history"
     );
     expect(globalStitchesCollectionPath()).toBe("globalStitches");
-    expect(globalColoursCollectionPath()).toBe("globalColours");
   });
 });

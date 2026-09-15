@@ -1,5 +1,12 @@
 # Global Pool identity is keyed by hex, not label+hex
 
+> **Status: Superseded.** The Global Pool no longer accepts Colour
+> contributions (Stitches only, as of the change removing Colours from the
+> Global Pool) — see [CONTEXT.md](../../CONTEXT.md)'s Global Pool and Global
+> Key entries. The hex-vs-label question this ADR answers no longer arises:
+> every Global Key is now the normalized label. Kept for history; do not
+> treat the decision below as current behavior.
+
 The Global Pool needs a deterministic key so contributions can dedupe via
 "does this doc ID already exist" rather than a query. We key a Colour's
 [Global Key](../../CONTEXT.md) on its hex code alone when one is present

@@ -8,14 +8,12 @@ import {
 } from "./globalPoolApi";
 
 interface GlobalPoolBrowserProps {
-  kind: "stitch" | "colour";
   globalCollectionPath: string;
   libraryCollectionPath: string;
   onCrossPanelChange: () => void;
 }
 
 export function GlobalPoolBrowser({
-  kind,
   globalCollectionPath,
   libraryCollectionPath,
   onCrossPanelChange,
@@ -56,7 +54,7 @@ export function GlobalPoolBrowser({
     setError(null);
     setLoading(true);
     try {
-      await pullIntoLibrary(libraryCollectionPath, kind, item);
+      await pullIntoLibrary(libraryCollectionPath, item);
       onCrossPanelChange();
       setJustSucceededId(item.id);
       setTimeout(() => setJustSucceededId(null), 2000);
