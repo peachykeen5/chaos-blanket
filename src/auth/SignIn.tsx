@@ -39,7 +39,7 @@ export function SignIn() {
         <div className="flex flex-col gap-8">
           <div className="flex items-center gap-3">
             <ChaosBlanketMark />
-            <span className="text-lg font-bold text-white">Chaos Blanket</span>
+            <span className="text-lg font-bold text-white">Crochet Chaos</span>
           </div>
 
           <div className="flex flex-col gap-5">
@@ -48,7 +48,7 @@ export function SignIn() {
               Cozy
             </h1>
             <p className="max-w-md text-white">
-              Chaos Blanket mixes up stitches, colors, and row counts so your
+              Crochet Chaos mixes up stitches, colors, and row counts so your
               next crochet project stays playful, surprising, and full of
               happy accidents.
             </p>

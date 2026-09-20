@@ -1,22 +1,46 @@
 import { useEffect, useState } from "react";
-import { deleteItem } from "../../lib/lists";
-import { projectHistoryCollectionPath } from "../../lib/paths";
-import type { HistoryEntry } from "../../types";
+import { InlineError } from "../../components";
+import { fetchLabeledItems } from "../../lib/lists";
+import { projectColoursCollectionPath, projectStitchesCollectionPath } from "../../lib/paths";
+import type { ColourItem, HistoryEntry, StitchItem } from "../../types";
 import { fetchHistory } from "../generate/generateApi";
+import { HistoryRow } from "./HistoryRow";
 
 interface HistoryListProps {
   uid: string;
   projectId: string;
   refreshKey: number;
+  onChanged: () => void;
 }
 
-export function HistoryList({ uid, projectId, refreshKey }: HistoryListProps) {
+function buildPatternText(entries: HistoryEntry[]): string {
+  return [...entries]
+    .reverse()
+    .map((entry, index) => {
+      const step = index + 1;
+      const colour = entry.colourHex ? `${entry.colourLabel} (${entry.colourHex})` : entry.colourLabel;
+      return `#${step}: ${entry.rowCount} row${entry.rowCount === 1 ? "" : "s"} of ${entry.stitchLabel} in ${colour}`;
+    })
+    .join("\n");
+}
+
+export function HistoryList({ uid, projectId, refreshKey, onChanged }: HistoryListProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [stitchOptions, setStitchOptions] = useState<StitchItem[]>([]);
+  const [colourOptions, setColourOptions] = useState<ColourItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function reload() {
     try {
-      setEntries(await fetchHistory(uid, projectId));
+      const [history, stitches, colours] = await Promise.all([
+        fetchHistory(uid, projectId),
+        fetchLabeledItems<StitchItem>(projectStitchesCollectionPath(uid, projectId)),
+        fetchLabeledItems<ColourItem>(projectColoursCollectionPath(uid, projectId)),
+      ]);
+      setEntries(history);
+      setStitchOptions(stitches);
+      setColourOptions(colours);
       setError(null);
     } catch {
       setError("Couldn't load history — check your connection and try again.");
@@ -28,37 +52,58 @@ export function HistoryList({ uid, projectId, refreshKey }: HistoryListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid, projectId, refreshKey]);
 
-  async function handleDelete(entryId: string) {
-    setError(null);
+  async function handleExport() {
     try {
-      await deleteItem(projectHistoryCollectionPath(uid, projectId), entryId);
-      await reload();
+      await navigator.clipboard.writeText(buildPatternText(entries));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Couldn't delete that — check your connection and try again.");
+      setError("Couldn't copy the pattern to your clipboard.");
     }
   }
 
   return (
-    <div className="mt-4">
-      <h3 className="font-semibold text-gray-900">History</h3>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-      <ul className="mt-2 space-y-1">
-        {entries.map((entry) => (
-          <li key={entry.id} className="flex items-center gap-2 text-sm">
-            <span>
-              {entry.rowCount} rows of {entry.stitchLabel} in {entry.colourLabel}
-              {entry.colourHex ? ` (${entry.colourHex})` : ""}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleDelete(entry.id)}
-              className="text-xs text-red-600 underline"
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-extrabold text-[#130E26]">History</h2>
+          <span className="rounded-full bg-[#B0176C]/10 px-3 py-1 text-xs font-semibold text-[#B0176C]">
+            {entries.length} Step{entries.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        {entries.length > 0 && (
+          <button
+            type="button"
+            onClick={handleExport}
+            className="text-sm font-semibold text-[#B0176C] hover:text-[#93125A]"
+          >
+            {copied ? "Copied!" : "Export Pattern"}
+          </button>
+        )}
+      </div>
+
+      {error && <InlineError className="mt-3">{error}</InlineError>}
+
+      {entries.length === 0 ? (
+        <p className="mt-4 text-sm text-[#726E8D]">
+          No steps yet. Generate your first pattern step to get started.
+        </p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3">
+          {entries.map((entry, index) => (
+            <HistoryRow
+              key={entry.id}
+              uid={uid}
+              projectId={projectId}
+              entry={entry}
+              stepNumber={entries.length - index}
+              stitchOptions={stitchOptions}
+              colourOptions={colourOptions}
+              onChanged={onChanged}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

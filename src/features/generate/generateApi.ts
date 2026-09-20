@@ -1,10 +1,13 @@
 import {
   addDoc,
   collection,
+  deleteField,
+  doc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { fetchLabeledItems } from "../../lib/lists";
@@ -47,6 +50,30 @@ export async function generateSegment(
     rowCount,
     generatedAt: serverTimestamp(),
   });
+}
+
+export interface HistoryEntryEdits {
+  stitchLabel: string;
+  colourLabel: string;
+  colourHex?: string;
+  rowCount: number;
+}
+
+export async function updateHistoryEntry(
+  uid: string,
+  projectId: string,
+  entryId: string,
+  edits: HistoryEntryEdits
+): Promise<void> {
+  await updateDoc(
+    doc(db, projectHistoryCollectionPath(uid, projectId), entryId),
+    {
+      stitchLabel: edits.stitchLabel,
+      colourLabel: edits.colourLabel,
+      colourHex: edits.colourHex ? edits.colourHex : deleteField(),
+      rowCount: edits.rowCount,
+    }
+  );
 }
 
 export async function fetchHistory(

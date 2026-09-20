@@ -5,6 +5,7 @@ export type { TextInputProps, TextareaProps, SelectProps } from "./TextInput";
 export { Heading } from "./Heading";
 export { ChaosBlanketMark } from "./Logo";
 export { Card } from "./Card";
+export { ConfirmModal } from "./ConfirmModal";
 export { InlineError } from "./InlineError";
 export { Confirmation } from "./Confirmation";
 export { useInlineConfirmation } from "./useInlineConfirmation";

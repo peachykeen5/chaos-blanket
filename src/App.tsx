@@ -21,7 +21,7 @@ function ProjectShell({ children, displayName, onSignOut, bootstrapError }: Proj
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="flex items-center justify-between">
         <Link to="/">
-          <Heading level={1}>Chaos Blanket</Heading>
+          <Heading level={1}>Crochet Chaos</Heading>
         </Link>
         <Button variant="link" size="md" onClick={onSignOut}>
           Sign out
@@ -72,9 +72,12 @@ export function App() {
       <Route
         path="/projects/:projectId"
         element={
-          <ProjectShell displayName={displayName} onSignOut={signOut} bootstrapError={bootstrapError}>
-            <ProjectPage uid={user.uid} />
-          </ProjectShell>
+          <ProjectPage
+            uid={user.uid}
+            displayName={displayName}
+            onSignOut={signOut}
+            bootstrapError={bootstrapError}
+          />
         }
       />
       <Route

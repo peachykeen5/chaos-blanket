@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { InlineError } from "../../components";
+import { SparklesIcon } from "../../components/icons";
 import { fetchLabeledItems } from "../../lib/lists";
 import {
   projectColoursCollectionPath,
@@ -80,22 +82,30 @@ export function GeneratePanel({
   }
 
   return (
-    <div className="mt-4">
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={!countsLoaded || disabledReason !== null}
-        className="rounded bg-purple-600 px-3 py-1 text-sm text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-      >
-        Generate
-      </button>
-      {!countsLoaded && !error && (
-        <p className="mt-1 text-xs text-gray-500">Loading…</p>
-      )}
-      {disabledReason && (
-        <p className="mt-1 text-xs text-gray-500">{disabledReason}</p>
-      )}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-extrabold text-[#130E26]">
+            Ready for your next pattern step?
+          </h2>
+          <p className="mt-1 text-sm text-[#726E8D]">
+            Generate a randomized combination of stitch type, yarn color, and row depth.
+          </p>
+          {!countsLoaded && !error && <p className="mt-1 text-xs text-[#A39EB9]">Loading…</p>}
+          {disabledReason && <p className="mt-1 text-xs text-[#A39EB9]">{disabledReason}</p>}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={!countsLoaded || disabledReason !== null}
+          className="flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-[#F36D00] to-[#B0176C] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <SparklesIcon className="h-4 w-4" />
+          Generate
+        </button>
+      </div>
+      {error && <InlineError className="mt-3">{error}</InlineError>}
     </div>
   );
 }

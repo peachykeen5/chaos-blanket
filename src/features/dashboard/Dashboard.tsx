@@ -3,7 +3,13 @@ import { useNavigate } from "react-router";
 import { ChaosBlanketMark, InlineError } from "../../components";
 import { createProject, deleteProject } from "../projects/projectsApi";
 import { loadDashboardData } from "./dashboardApi";
-import { ArrowRightIcon, PlusIcon, SmileIcon, SparklesIcon, TrendingUpIcon } from "./icons";
+import {
+  ArrowRightIcon,
+  PlusIcon,
+  SmileIcon,
+  SparklesIcon,
+  TrendingUpIcon,
+} from "../../components/icons";
 import { ProjectCard } from "./ProjectCard";
 import type { DashboardSummary, ProjectCardData } from "./theme";
 
@@ -77,7 +83,7 @@ export function Dashboard({ uid, displayName, onSignOut, bootstrapError }: Dashb
           <div className="flex items-center gap-3">
             <ChaosBlanketMark />
             <div>
-              <div className="text-2xl font-extrabold text-[#B0176C]">Chaos Blanket</div>
+              <div className="text-2xl font-extrabold text-[#B0176C]">Crochet Chaos</div>
               <div className="flex items-center gap-2 text-sm text-[#726E8D]">
                 <span>Signed in as {displayName}</span>
                 <span aria-hidden="true">·</span>

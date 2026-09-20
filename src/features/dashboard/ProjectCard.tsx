@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { RulerIcon, TrashIcon, YarnIcon } from "./icons";
+import { RulerIcon, TrashIcon, YarnIcon } from "../../components/icons";
 import type { ProjectCardData } from "./theme";
 import { themeColourForId } from "./theme";
 
