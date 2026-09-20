@@ -15,6 +15,7 @@ interface HistoryRowProps {
   stepNumber: number;
   stitchOptions: StitchItem[];
   colourOptions: ColourItem[];
+  isNew?: boolean;
   onChanged: () => void;
 }
 
@@ -27,6 +28,7 @@ export function HistoryRow({
   stepNumber,
   stitchOptions,
   colourOptions,
+  isNew = false,
   onChanged,
 }: HistoryRowProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -156,7 +158,10 @@ export function HistoryRow({
 
   return (
     <div
-      className="flex items-center gap-4 rounded-2xl p-4"
+      className={clsx(
+        "flex items-center gap-4 rounded-2xl p-4",
+        isNew && "animate-pulse-glow"
+      )}
       style={{ backgroundColor: colourHex }}
     >
       <span

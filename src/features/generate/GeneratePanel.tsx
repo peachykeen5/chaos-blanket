@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import clsx from "clsx";
 import { InlineError } from "../../components";
 import { SparklesIcon } from "../../components/icons";
 import { fetchLabeledItems } from "../../lib/lists";
@@ -10,11 +11,17 @@ import type { Project } from "../../types";
 import { isValidRowRange } from "../projects/projectsApi";
 import { generateSegment } from "./generateApi";
 
+const MIN_GENERATING_MS = 1000;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 interface GeneratePanelProps {
   uid: string;
   project: Project;
   refreshKey: number;
-  onGenerated: () => Promise<void>;
+  onGenerated: (newEntryId: string) => Promise<void>;
 }
 
 export function GeneratePanel({
@@ -26,6 +33,7 @@ export function GeneratePanel({
   const [stitchCount, setStitchCount] = useState<number | null>(null);
   const [colourCount, setColourCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   async function reloadCounts() {
     try {
@@ -71,13 +79,19 @@ export function GeneratePanel({
   // setError(null)-on-success.
   async function handleClick() {
     setError(null);
+    setGenerating(true);
+    const startedAt = Date.now();
     try {
-      await generateSegment(uid, project);
+      const newEntryId = await generateSegment(uid, project);
       await reloadCounts();
-      await onGenerated();
+      await onGenerated(newEntryId);
     } catch (err) {
       await reloadCounts();
       setError(err instanceof Error ? err.message : "Generate failed.");
+    } finally {
+      const remaining = MIN_GENERATING_MS - (Date.now() - startedAt);
+      if (remaining > 0) await wait(remaining);
+      setGenerating(false);
     }
   }
 
@@ -98,11 +112,14 @@ export function GeneratePanel({
         <button
           type="button"
           onClick={handleClick}
-          disabled={!countsLoaded || disabledReason !== null}
-          className="flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-[#F36D00] to-[#B0176C] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!countsLoaded || disabledReason !== null || generating}
+          className={clsx(
+            "flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-r from-[#F36D00] to-[#B0176C] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-transform hover:opacity-90 disabled:cursor-not-allowed",
+            generating ? "scale-95 opacity-90" : "disabled:opacity-50"
+          )}
         >
-          <SparklesIcon className="h-4 w-4" />
-          Generate
+          <SparklesIcon className={clsx("h-4 w-4", generating && "animate-spin")} />
+          {generating ? "Generating…" : "Generate"}
         </button>
       </div>
       {error && <InlineError className="mt-3">{error}</InlineError>}

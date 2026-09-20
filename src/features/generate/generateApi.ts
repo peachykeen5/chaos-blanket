@@ -23,7 +23,7 @@ import { pickRandomInclusive, pickRandomItem } from "./random";
 export async function generateSegment(
   uid: string,
   project: Project
-): Promise<void> {
+): Promise<string> {
   const [stitches, colours] = await Promise.all([
     fetchLabeledItems<StitchItem>(projectStitchesCollectionPath(uid, project.id)),
     fetchLabeledItems<ColourItem>(projectColoursCollectionPath(uid, project.id)),
@@ -43,13 +43,14 @@ export async function generateSegment(
   const colour = pickRandomItem(colours);
   const rowCount = pickRandomInclusive(project.rowMin, project.rowMax);
 
-  await addDoc(collection(db, projectHistoryCollectionPath(uid, project.id)), {
+  const ref = await addDoc(collection(db, projectHistoryCollectionPath(uid, project.id)), {
     stitchLabel: stitch.label,
     colourLabel: colour.label,
     ...(colour.hex ? { colourHex: colour.hex } : {}),
     rowCount,
     generatedAt: serverTimestamp(),
   });
+  return ref.id;
 }
 
 export interface HistoryEntryEdits {

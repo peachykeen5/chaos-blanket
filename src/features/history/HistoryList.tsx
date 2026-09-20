@@ -10,6 +10,7 @@ interface HistoryListProps {
   uid: string;
   projectId: string;
   refreshKey: number;
+  highlightedEntryId?: string | null;
   onChanged: () => void;
 }
 
@@ -24,7 +25,13 @@ function buildPatternText(entries: HistoryEntry[]): string {
     .join("\n");
 }
 
-export function HistoryList({ uid, projectId, refreshKey, onChanged }: HistoryListProps) {
+export function HistoryList({
+  uid,
+  projectId,
+  refreshKey,
+  highlightedEntryId,
+  onChanged,
+}: HistoryListProps) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [stitchOptions, setStitchOptions] = useState<StitchItem[]>([]);
   const [colourOptions, setColourOptions] = useState<ColourItem[]>([]);
@@ -99,6 +106,7 @@ export function HistoryList({ uid, projectId, refreshKey, onChanged }: HistoryLi
               stepNumber={entries.length - index}
               stitchOptions={stitchOptions}
               colourOptions={colourOptions}
+              isNew={entry.id === highlightedEntryId}
               onChanged={onChanged}
             />
           ))}
