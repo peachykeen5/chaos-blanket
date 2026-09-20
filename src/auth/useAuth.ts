@@ -6,6 +6,7 @@ import {
   type User,
 } from "firebase/auth";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import { auth } from "../lib/firebase";
 
 interface AuthState {
@@ -15,6 +16,7 @@ interface AuthState {
 }
 
 export function useAuth() {
+  const navigate = useNavigate();
   const [state, setState] = useState<AuthState>({
     user: null,
     loading: true,
@@ -33,6 +35,10 @@ export function useAuth() {
     setState((s) => ({ ...s, error: null }));
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
+      // Always land fresh on the dashboard after signing in — never leave the
+      // browser sitting on whatever route was active before this sign-in
+      // (e.g. a stale project page from a previous session).
+      navigate("/", { replace: true });
     } catch (err) {
       console.error("signInWithPopup failed", err);
       setState((s) => ({

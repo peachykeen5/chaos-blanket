@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router";
+import { ConfirmModal } from "../../components";
 import { RulerIcon, TrashIcon, YarnIcon } from "../../components/icons";
 import type { ProjectCardData } from "./theme";
 import { themeColourForId } from "./theme";
@@ -9,6 +11,7 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onDelete }: ProjectCardProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const headerColour = project.lastColourHex ?? themeColourForId(project.id);
 
   return (
@@ -55,7 +58,7 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
           </Link>
           <button
             type="button"
-            onClick={() => onDelete(project.id)}
+            onClick={() => setConfirmingDelete(true)}
             className="text-[#726E8D] hover:text-[#E0125C]"
             aria-label={`Delete ${project.name}`}
           >
@@ -63,6 +66,18 @@ export function ProjectCard({ project, onDelete }: ProjectCardProps) {
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        open={confirmingDelete}
+        title="Delete this project?"
+        message={`This will permanently delete "${project.name}" and all of its history. This can't be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          setConfirmingDelete(false);
+          onDelete(project.id);
+        }}
+        onCancel={() => setConfirmingDelete(false)}
+      />
     </div>
   );
 }
