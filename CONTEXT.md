@@ -63,24 +63,34 @@ _Avoid_: Project pool
 
 **Account Library**:
 A signed-in user's personal, cross-project collection of saved Stitches
-and Colours, reusable across any of their Projects.
+and Colours, reusable across any of their Projects. Not an independently
+browsable or bulk-editable screen — it's populated automatically whenever
+a Project's Settings are saved (any Stitch/Colour typed there that's new
+to the account is upserted into the Library), and surfaced back only as
+the "Add from your library" quick-add list on a Project's Settings screen
+(Stitches only).
 _Avoid_: Library (ambiguous with Global Pool), Saved items
 
 **Global Pool**:
 The public, deduplicated collection of Stitches contributed by all users,
-browsable read-only by any signed-in user and never directly writable by a
-client. Stitches only — Colours are never contributed to or browsable from
-the Global Pool (they still exist in Project Lists and the Account
-Library).
+never directly writable by a client. Stitches only — Colours are never
+contributed to the Global Pool (they still exist in Project Lists and the
+Account Library). There is currently no client UI that reads from the
+Global Pool — it exists purely as a background data store the Contribution
+mechanism writes into, awaiting a future browsing feature.
 _Avoid_: Library, Global library, Shared pool
 
 ### Contribution & abuse prevention
 
 **Contribution**:
 The act of writing an Item into the Global Pool, via the `contributeToGlobal`
-function. Fires only at two points: saving an Item to the Account Library,
-or pulling an Item from the Global Pool into the Account Library. Editing
-an Item afterward (e.g. adding a Hex to a Colour) never re-fires it.
+function. Fires when saving a Project's Settings, for each Stitch that's
+newly added to the Account Library as a result (not for every Stitch in the
+Project — only ones the account didn't already have). The "pulling an Item
+from the Global Pool into the Account Library" trigger has no UI path today
+(there is no Global Pool browsing screen) and is effectively dormant, though
+unaffected as a mechanism. Editing an Item afterward (e.g. changing a
+Colour's Hex) never re-fires it.
 _Avoid_: Contribute, Publish, Submit
 
 **Global Key**:

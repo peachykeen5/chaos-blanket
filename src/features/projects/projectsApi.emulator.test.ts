@@ -4,6 +4,7 @@ import { auth } from "../../lib/firebase";
 import {
   createProject,
   deleteProject,
+  getProject,
   listProjects,
   renameProject,
   updateRowRange,
@@ -45,5 +46,24 @@ describe("projectsApi", () => {
     await expect(
       createProject(user.uid, { name: "Bad", rowMin: 6, rowMax: 2 })
     ).rejects.toThrow();
+  });
+
+  it("getProject returns the project by id, or null if it doesn't exist", async () => {
+    const { user } = await signInAnonymously(auth);
+    const projectId = await createProject(user.uid, {
+      name: "Fetchable",
+      rowMin: 1,
+      rowMax: 4,
+    });
+
+    const found = await getProject(user.uid, projectId);
+    expect(found).toMatchObject({
+      id: projectId,
+      name: "Fetchable",
+      rowMin: 1,
+      rowMax: 4,
+    });
+
+    expect(await getProject(user.uid, "does-not-exist")).toBeNull();
   });
 });

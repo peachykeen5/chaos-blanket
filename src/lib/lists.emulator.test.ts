@@ -6,6 +6,7 @@ import {
   bulkAddLabels,
   deleteItem,
   fetchLabeledItems,
+  syncLabeledItems,
   updateColourHex,
 } from "./lists";
 
@@ -75,5 +76,45 @@ describe("lists", () => {
     items = await fetchLabeledItems<Item>(collectionPath);
     expect(items).toHaveLength(1); // duplicate skipped, original hex untouched
     expect(items[0].hex).toBe("#FF7F50");
+  });
+
+  it("syncLabeledItems adds new labels and removes ones no longer staged, leaving untouched items' fields intact", async () => {
+    const { user } = await signInAnonymously(auth);
+    const collectionPath = `users/${user.uid}/projects/p1/stitches`;
+
+    await bulkAddLabels(collectionPath, "Double Crochet\nMoss Stitch", []);
+    let items = await fetchLabeledItems<Item>(collectionPath);
+    expect(items.map((i) => i.label).sort()).toEqual([
+      "Double Crochet",
+      "Moss Stitch",
+    ]);
+
+    // Stage: keep "Double Crochet" (case-varied), drop "Moss Stitch", add "Treble Crochet".
+    const { addedLabels } = await syncLabeledItems(
+      collectionPath,
+      "double crochet\nTreble Crochet",
+      items
+    );
+    expect(addedLabels).toEqual(["Treble Crochet"]);
+
+    items = await fetchLabeledItems<Item>(collectionPath);
+    expect(items.map((i) => i.label).sort()).toEqual([
+      "Double Crochet",
+      "Treble Crochet",
+    ]);
+  });
+
+  it("syncLabeledItems never modifies a surviving item's other fields (e.g. hex)", async () => {
+    const { user } = await signInAnonymously(auth);
+    const collectionPath = `users/${user.uid}/projects/p1/colours`;
+
+    await addLabeledItemWithHex(collectionPath, { label: "Coral", hex: "#FF7F50" }, []);
+    const before = await fetchLabeledItems<Item>(collectionPath);
+
+    await syncLabeledItems(collectionPath, "Coral", before);
+
+    const after = await fetchLabeledItems<Item>(collectionPath);
+    expect(after).toHaveLength(1);
+    expect(after[0].hex).toBe("#FF7F50");
   });
 });

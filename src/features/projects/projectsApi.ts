@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   serverTimestamp,
   updateDoc,
@@ -41,6 +42,15 @@ export async function createProject(
     updatedAt: serverTimestamp(),
   });
   return ref.id;
+}
+
+export async function getProject(
+  uid: string,
+  projectId: string
+): Promise<Project | null> {
+  const snap = await getDoc(doc(db, projectDocPath(uid, projectId)));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...(snap.data() as object) } as Project;
 }
 
 export async function listProjects(uid: string): Promise<Project[]> {

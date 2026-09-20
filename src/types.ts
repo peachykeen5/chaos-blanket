@@ -36,12 +36,3 @@ export interface HistoryEntry {
   rowCount: number;
   generatedAt: Timestamp | null;
 }
-
-/** A document in globalStitches — the Global Pool holds Stitches only. */
-export interface GlobalItemDoc {
-  id: string;
-  label: string;
-  createdAt: Timestamp | null;
-  contributorCount: number;
-  imageUrl?: string;
-}

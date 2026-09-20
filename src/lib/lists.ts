@@ -52,6 +52,34 @@ export async function updateColourHex(
   await updateDoc(doc(db, collectionPath, itemId), { hex });
 }
 
+/**
+ * Reconciles a collection to hold exactly the labels in `stagedText`:
+ * adds labels present in `stagedText` but missing from `currentItems`,
+ * deletes items in `currentItems` whose label is no longer present in
+ * `stagedText` (case-insensitive). Never touches a surviving item's other
+ * fields (e.g. `hex`) — it only adds or removes whole documents.
+ */
+export async function syncLabeledItems(
+  collectionPath: string,
+  stagedText: string,
+  currentItems: LabeledItem[]
+): Promise<{ addedLabels: string[] }> {
+  const staged = parseBulkPaste(stagedText);
+  const currentLabels = currentItems.map((item) => item.label);
+  const toAdd = dedupeAgainstExisting(staged, currentLabels);
+  const toDelete = currentItems.filter(
+    (item) =>
+      !staged.some((label) => normalizeLabel(label) === normalizeLabel(item.label))
+  );
+
+  await Promise.all([
+    ...(toAdd.length > 0 ? [bulkAddLabels(collectionPath, toAdd.join("\n"), currentLabels)] : []),
+    ...toDelete.map((item) => deleteItem(collectionPath, item.id)),
+  ]);
+
+  return { addedLabels: toAdd };
+}
+
 export async function addLabeledItemWithHex(
   collectionPath: string,
   item: { label: string; hex?: string },
