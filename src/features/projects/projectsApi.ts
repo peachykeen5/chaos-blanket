@@ -38,6 +38,8 @@ export async function createProject(
     name: input.name,
     rowMin: input.rowMin,
     rowMax: input.rowMax,
+    archived: false,
+    archivedAt: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

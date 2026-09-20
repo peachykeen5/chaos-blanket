@@ -26,7 +26,13 @@ describe("projectsApi", () => {
 
     let projects = await listProjects(user.uid);
     expect(projects).toHaveLength(1);
-    expect(projects[0]).toMatchObject({ name: "Blanket 1", rowMin: 2, rowMax: 6 });
+    expect(projects[0]).toMatchObject({
+      name: "Blanket 1",
+      rowMin: 2,
+      rowMax: 6,
+      archived: false,
+      archivedAt: null,
+    });
 
     await renameProject(user.uid, projectId, "Renamed Blanket");
     await updateRowRange(user.uid, projectId, 3, 3);

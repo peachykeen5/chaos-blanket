@@ -11,6 +11,8 @@ export interface Project {
   name: string;
   rowMin: number;
   rowMax: number;
+  archived: boolean;
+  archivedAt: Timestamp | null;
   createdAt: Timestamp | null;
   updatedAt: Timestamp | null;
 }

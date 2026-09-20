@@ -14,7 +14,16 @@ afterEach(async () => {
 });
 
 function makeProject(id: string, rowMin: number, rowMax: number): Project {
-  return { id, name: "Test", rowMin, rowMax, createdAt: null, updatedAt: null };
+  return {
+    id,
+    name: "Test",
+    rowMin,
+    rowMax,
+    archived: false,
+    archivedAt: null,
+    createdAt: null,
+    updatedAt: null,
+  };
 }
 
 describe("generateSegment", () => {

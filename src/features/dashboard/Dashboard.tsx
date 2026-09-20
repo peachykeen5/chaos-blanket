@@ -4,7 +4,6 @@ import { ChaosBlanketMark, InlineError } from "../../components";
 import { createProject, deleteProject } from "../projects/projectsApi";
 import { loadDashboardData } from "./dashboardApi";
 import {
-  ArrowRightIcon,
   PlusIcon,
   SmileIcon,
   SparklesIcon,
@@ -159,10 +158,14 @@ export function Dashboard({ uid, displayName, onSignOut, bootstrapError }: Dashb
               {cards.length} Active
             </span>
           </div>
+          {/* Archive feature not built yet — Project schema already carries
+              archived/archivedAt so this can be wired up without a migration.
+              Re-add `ArrowRightIcon` to the import above when restoring this.
           <span className="flex items-center gap-1 text-sm font-semibold text-[#B0176C]">
             View Archive
             <ArrowRightIcon className="h-4 w-4" />
           </span>
+          */}
         </div>
 
         <div className="mt-4 rounded-2xl bg-white p-6 shadow-sm">
