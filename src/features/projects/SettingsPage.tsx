@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { ChaosBlanketMark, InlineError } from "../../components";
+import { ChaosBlanketMark, ConfirmModal, InlineError } from "../../components";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -24,7 +24,13 @@ import {
   stitchLibraryCollectionPath,
 } from "../../lib/paths";
 import type { ColourItem, Project, StitchItem } from "../../types";
-import { getProject, isValidRowRange, renameProject, updateRowRange } from "./projectsApi";
+import {
+  deleteProject,
+  getProject,
+  isValidRowRange,
+  renameProject,
+  updateRowRange,
+} from "./projectsApi";
 
 interface StagedColour {
   label: string;
@@ -62,6 +68,12 @@ export function SettingsPage({
   const [libraryColourLabels, setLibraryColourLabels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isNewProject, setIsNewProject] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [backConfirmOpen, setBackConfirmOpen] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [discardError, setDiscardError] = useState<string | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
 
   useEffect(() => {
     if (!projectId) return;
@@ -89,6 +101,8 @@ export function SettingsPage({
       setColours(colourItems.map((c) => ({ label: c.label, hex: c.hex })));
       setLibraryStitches(libStitches);
       setLibraryColourLabels(libColours.map((c) => c.label));
+      setIsNewProject(stitches.length === 0 && colourItems.length === 0);
+      setDirty(false);
       setLoading(false);
     }
 
@@ -104,27 +118,67 @@ export function SettingsPage({
       .map((l) => normalizeLabel(l.trim()))
       .filter(Boolean)
   );
+  const hasStitches = stagedStitchLabels.size > 0;
+  const hasColours = colours.some((c) => c.label.trim().length > 0);
 
   function addStitchFromLibrary(label: string) {
     const lines = stitchesText.split("\n").map((l) => l.trim()).filter(Boolean);
     if (lines.some((l) => normalizeLabel(l) === normalizeLabel(label))) return;
     setStitchesText(lines.length > 0 ? `${stitchesText.trimEnd()}\n${label}` : label);
+    setDirty(true);
   }
 
   function updateColourLabel(index: number, label: string) {
     setColours((prev) => prev.map((c, i) => (i === index ? { ...c, label } : c)));
+    setDirty(true);
   }
 
   function updateColourHexAt(index: number, hex: string) {
     setColours((prev) => prev.map((c, i) => (i === index ? { ...c, hex } : c)));
+    setDirty(true);
   }
 
   function removeColourRow(index: number) {
     setColours((prev) => prev.filter((_, i) => i !== index));
+    setDirty(true);
   }
 
   function addColourRow() {
     setColours((prev) => [...prev, { label: "" }]);
+    setDirty(true);
+  }
+
+  function handleBackClick() {
+    if (isNewProject || dirty) {
+      setDiscardError(null);
+      setBackConfirmOpen(true);
+      return;
+    }
+    navigate(`/projects/${projectId}`);
+  }
+
+  function handleBackCancel() {
+    setBackConfirmOpen(false);
+    setDiscardError(null);
+  }
+
+  async function handleBackConfirm() {
+    if (!isNewProject) {
+      setBackConfirmOpen(false);
+      navigate(`/projects/${projectId}`);
+      return;
+    }
+    if (!projectId) return;
+    setDiscarding(true);
+    setDiscardError(null);
+    try {
+      await deleteProject(uid, projectId);
+      navigate("/");
+    } catch {
+      setDiscardError("Couldn't discard the project — check your connection and try again.");
+    } finally {
+      setDiscarding(false);
+    }
   }
 
   async function handleSave() {
@@ -133,6 +187,11 @@ export function SettingsPage({
       setError("Row min must be a whole number no greater than row max.");
       return;
     }
+    if (!hasStitches || !hasColours) {
+      setShowValidation(true);
+      return;
+    }
+    setShowValidation(false);
     setError(null);
     setSaving(true);
     try {
@@ -211,7 +270,28 @@ export function SettingsPage({
         })
       );
 
-      navigate(`/projects/${projectId}`);
+      const [refreshedProject, refreshedStitches, refreshedColours, refreshedLibStitches, refreshedLibColours] =
+        await Promise.all([
+          getProject(uid, projectId),
+          fetchLabeledItems<StitchItem>(projectStitchesCollectionPath(uid, projectId)),
+          fetchLabeledItems<ColourItem>(projectColoursCollectionPath(uid, projectId)),
+          fetchLabeledItems<StitchItem>(stitchLibraryCollectionPath(uid)),
+          fetchLabeledItems<ColourItem>(colourLibraryCollectionPath(uid)),
+        ]);
+      setProject(refreshedProject);
+      if (refreshedProject) {
+        setName(refreshedProject.name);
+        setRowMin(refreshedProject.rowMin);
+        setRowMax(refreshedProject.rowMax);
+      }
+      setOriginalStitches(refreshedStitches);
+      setStitchesText(refreshedStitches.map((s) => s.label).join("\n"));
+      setOriginalColours(refreshedColours);
+      setColours(refreshedColours.map((c) => ({ label: c.label, hex: c.hex })));
+      setLibraryStitches(refreshedLibStitches);
+      setLibraryColourLabels(refreshedLibColours.map((c) => c.label));
+      setIsNewProject(refreshedStitches.length === 0 && refreshedColours.length === 0);
+      setDirty(false);
     } catch {
       setError("Couldn't save your settings — check your connection and try again.");
     } finally {
@@ -253,13 +333,30 @@ export function SettingsPage({
           <p className="mt-8 text-sm text-[#726E8D]">Project not found.</p>
         ) : (
           <>
-            <Link
-              to={`/projects/${projectId}`}
+            <button
+              type="button"
+              onClick={handleBackClick}
               className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-[#B0176C] hover:text-[#93125A]"
             >
               <ArrowLeftIcon className="h-4 w-4" />
-              Back to {project.name}
-            </Link>
+              {isNewProject ? "Return to dashboard" : `Back to ${project.name}`}
+            </button>
+
+            <ConfirmModal
+              open={backConfirmOpen}
+              title={isNewProject ? "Discard this project?" : "Unsaved changes"}
+              message={
+                isNewProject
+                  ? "You haven't saved this project yet. If you return to the dashboard now, it will be deleted."
+                  : "You have unsaved changes. If you leave now, they'll be lost."
+              }
+              confirmLabel={isNewProject ? "Discard & Return" : "Leave Without Saving"}
+              cancelLabel="Keep Editing"
+              confirming={isNewProject ? discarding : false}
+              error={isNewProject ? discardError : null}
+              onConfirm={handleBackConfirm}
+              onCancel={handleBackCancel}
+            />
 
             <h1 className="mt-2 text-3xl font-extrabold text-[#B0176C]">Settings</h1>
             <p className="text-sm text-[#726E8D]">Project: {project.name}</p>
@@ -270,7 +367,10 @@ export function SettingsPage({
                   <span className="text-sm font-semibold text-[#130E26]">Project name</span>
                   <input
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setDirty(true);
+                    }}
                     className="mt-2 w-full rounded-xl border border-[#EAE6FA] px-4 py-3 text-sm text-[#130E26] focus:border-[#B0176C] focus:outline-none"
                   />
                 </label>
@@ -285,7 +385,10 @@ export function SettingsPage({
                       <input
                         type="number"
                         value={rowMin}
-                        onChange={(e) => setRowMin(Number(e.target.value))}
+                        onChange={(e) => {
+                          setRowMin(Number(e.target.value));
+                          setDirty(true);
+                        }}
                         className="mt-1 block w-16 rounded-lg border border-[#EAE6FA] px-2 py-2 text-center text-sm text-[#130E26] focus:border-[#B0176C] focus:outline-none"
                       />
                     </label>
@@ -294,7 +397,10 @@ export function SettingsPage({
                       <input
                         type="number"
                         value={rowMax}
-                        onChange={(e) => setRowMax(Number(e.target.value))}
+                        onChange={(e) => {
+                          setRowMax(Number(e.target.value));
+                          setDirty(true);
+                        }}
                         className="mt-1 block w-16 rounded-lg border border-[#EAE6FA] px-2 py-2 text-center text-sm text-[#130E26] focus:border-[#B0176C] focus:outline-none"
                       />
                     </label>
@@ -309,44 +415,63 @@ export function SettingsPage({
                   <textarea
                     rows={5}
                     value={stitchesText}
-                    onChange={(e) => setStitchesText(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-[#EAE6FA] px-4 py-3 text-sm text-[#130E26] focus:border-[#B0176C] focus:outline-none"
+                    onChange={(e) => {
+                      setStitchesText(e.target.value);
+                      setDirty(true);
+                    }}
+                    className={`mt-2 w-full rounded-xl border px-4 py-3 text-sm text-[#130E26] focus:outline-none ${
+                      showValidation && !hasStitches
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-[#EAE6FA] focus:border-[#B0176C]"
+                    }`}
                   />
+                  {showValidation && !hasStitches && (
+                    <InlineError className="mt-2">
+                      Add at least one stitch to save this project.
+                    </InlineError>
+                  )}
                 </div>
 
                 <div className="mt-6">
                   <span className="text-sm font-semibold text-[#130E26]">Colours</span>
                   <div className="mt-2 flex flex-col gap-2">
-                    {colours.map((colour, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <input
-                          placeholder="Colour name"
-                          value={colour.label}
-                          onChange={(e) => updateColourLabel(index, e.target.value)}
-                          className="flex-1 rounded-lg border border-[#EAE6FA] px-3 py-2 text-sm text-[#130E26] focus:border-[#B0176C] focus:outline-none"
-                        />
-                        <input
-                          type="color"
-                          title="Pick a colour"
-                          value={HEX_PATTERN.test(colour.hex ?? "") ? colour.hex! : "#ffffff"}
-                          onChange={(e) => updateColourHexAt(index, e.target.value)}
-                          className="h-[31px] w-[31px] shrink-0 rounded-lg border border-[#EAE6FA] p-0.5"
-                        />
-                        <input
-                          placeholder="#HEX"
-                          value={colour.hex ?? ""}
-                          onChange={(e) => updateColourHexAt(index, e.target.value)}
-                          className="w-28 shrink-0 rounded-lg border border-[#EAE6FA] px-3 py-2 text-sm uppercase text-[#130E26] focus:border-[#B0176C] focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeColourRow(index)}
-                          className="shrink-0 text-sm font-semibold text-[#E60E12] hover:text-[#B00]"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
+                    {colours.map((colour, index) => {
+                      const rowEmpty = colour.label.trim().length === 0;
+                      return (
+                        <div key={index} className="flex items-center gap-2">
+                          <input
+                            placeholder="Colour name"
+                            value={colour.label}
+                            onChange={(e) => updateColourLabel(index, e.target.value)}
+                            className={`flex-1 rounded-lg border px-3 py-2 text-sm text-[#130E26] focus:outline-none ${
+                              showValidation && rowEmpty
+                                ? "border-red-500 focus:border-red-500"
+                                : "border-[#EAE6FA] focus:border-[#B0176C]"
+                            }`}
+                          />
+                          <input
+                            type="color"
+                            title="Pick a colour"
+                            value={HEX_PATTERN.test(colour.hex ?? "") ? colour.hex! : "#ffffff"}
+                            onChange={(e) => updateColourHexAt(index, e.target.value)}
+                            className="h-[31px] w-[31px] shrink-0 rounded-lg border border-[#EAE6FA] p-0.5"
+                          />
+                          <input
+                            placeholder="#HEX"
+                            value={colour.hex ?? ""}
+                            onChange={(e) => updateColourHexAt(index, e.target.value)}
+                            className="w-28 shrink-0 rounded-lg border border-[#EAE6FA] px-3 py-2 text-sm uppercase text-[#130E26] focus:border-[#B0176C] focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeColourRow(index)}
+                            className="shrink-0 text-sm font-semibold text-[#E60E12] hover:text-[#B00]"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                   <button
                     type="button"
@@ -355,6 +480,11 @@ export function SettingsPage({
                   >
                     + Add colour
                   </button>
+                  {showValidation && !hasColours && (
+                    <InlineError className="mt-2">
+                      Add at least one colour to save this project.
+                    </InlineError>
+                  )}
                 </div>
 
                 {error && <InlineError className="mt-4">{error}</InlineError>}
